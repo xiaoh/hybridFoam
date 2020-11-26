@@ -1,0 +1,38 @@
+#!/bin/bash
+# Time-stamp: <2010-06-24 19:56:18 xiaoh>
+# cp a foam_lammps case
+# usage: cpcasefoam src dest
+
+
+src=$1
+dest=$2
+
+if [ ! -d $src ]; then
+    echo Source dir: $src : does not exist.
+    exit 1
+fi
+
+if [ -d $dest ]; then
+    echo Desination dir: $dest : already exist.
+    echo Exiting now ...
+    exit 1
+else
+    mkdir $dest
+    cp -r $src/0  $dest
+    if [ -d 0.org ]; then cp -r $src/0.org  $dest; fi
+    cp -r $src/system  $dest
+    cp -r $src/constant  $dest
+
+    if [ -d $src/RANS.config ]; then
+        cp -r $src/RANS.config  $dest
+        mkdir $dest/RANS
+        cp -rP $src/RANS/constant  $dest/RANS
+        cp -rP $src/RANS/system  $dest/RANS
+        cp -P $src/RANS/0  $dest/RANS
+    fi
+
+fi
+
+#cd $dest
+#rm -fr [1-9]* 0.* VMD  snapshot.* restart* PID.*  *.foam  *.pvs *.log probes
+

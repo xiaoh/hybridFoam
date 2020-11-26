@@ -1,0 +1,6 @@
+GenElliptic/GenElliptic.C
+Durbin/Durbin.C
+ManceauHanjalic/ManceauHanjalic.C
+#include "addfile"
+
+LIB = $(FOAM_USER_LIBBIN)/libincompressibleRSTMdev

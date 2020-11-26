@@ -1,0 +1,16 @@
+#!/bin/sh
+cd ${0%/*} || exit 1    # run from this directory
+set -x
+
+wmake averageSpanwise
+wmake myLRPlus
+wmake myLRPlusLES
+wmake myPlusDNS
+wmake myPlusLES
+wmake perturbU
+wmake postAverage
+wmake postChannelX
+wmake postLRAverage
+wmake postLRChannel
+wmake ransCellToProcX
+# ----------------------------------------------------------------- end-of-file

@@ -1,0 +1,26 @@
+#!/bin/bash
+
+for case in *; do
+    dict=$case/constant/relaxParameters     
+    if [ -f $dict ]; then
+        echo "Upgrading case $case"
+        if [ -f $dict.old ]; then
+            echo "$dict.old already exist."
+        else
+            mv $dict $dict.old
+        fi
+
+        awk '
+       {
+         if(match($1, "Time") && NF > 4)
+            {
+               printf "   %-20s %8s\n", $1, $NF; 
+               if ($1 == "MRelaxTime") printf  "   %-20s %8s\n", "turbRelaxTime", "20.0;";
+            } 
+          else print; 
+       }' $dict.old > $dict
+    else
+        echo "*** $case is probably not a chLRFoam case."
+        continue
+    fi
+done

@@ -1,0 +1,16 @@
+#!/bin/sh
+
+cd ${0%/*} || exit 1    # run from this directory
+set -x
+
+./library/Allwclean  # Make libraries
+wclean impactFoam   
+wclean chLRFoam
+wclean chPisoFoam
+wclean chDnsFoam
+wclean hybridLRFoam
+wclean pisoDnsFoam
+wclean pisoFoamX
+./utilities/Allwclean
+
+# ----------------------------------------------------------------- end-of-file

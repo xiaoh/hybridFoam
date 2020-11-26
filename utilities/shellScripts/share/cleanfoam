@@ -1,0 +1,55 @@
+#!/bin/bash
+
+actionFile="/bin/rm -f"
+actionDir="/bin/rm -fr"
+
+if [ "x$1" = "x-h" ]; then
+  echo "Usage: $0 dir1 ..." >&2
+  exit 0
+fi
+
+if [ "x$1" = "x-f" ]; then
+   rm LOCK
+fi
+
+
+if [ $# -eq 0 ] || [ "x$1" = "x-f" ]; then
+  DIRS=.
+  if [ -d RANS ]; then
+      DIRS=". RANS"
+  fi
+else
+  DIRS=$@
+fi
+
+for d in $DIRS; do
+  echo "Cleaning directory '$d'"
+  if [ ! -d $d/system ]; then
+    echo "ERROR: '$d' is not an OpenFOAM case" >&2
+    exit 1
+  fi
+
+  if [ ! -f $d/LOCK ]; then
+      $actionDir  $d/0.[0-9]* $d/[1-9]*  > /dev/null 2>&1
+      $actionFile  $d/*sh.o[0-9] $d/*.qsub.o[0-9] $d/*.sh.po[0-9]  2>&1
+
+      if [ -d $d/RANS ]; then
+          $actionDir $d/RANS/0.[0-9]* $d/RANS/[1-9]* > /dev/null 2>&1
+      fi
+
+      if [ -d $d/processor0 ]; then
+          $actionDir $d/processor*/0.[0-9]* $d/processor*/[1-9]* > /dev/null 2>&1
+          if [ -d $d/RANS/processor0 ]; then
+              $actionDir $d/RANS/processor*/0.[0-9]* $d/RANS/processor*/[1-9]* > /dev/null 2>&1
+          fi
+      fi
+      
+      $actionDir $d/diary  $d/sets $d/probe* > /dev/null 2>&1
+      $actionFile $d/core.* $d/log* $d/*.log $d/*~ $d/FINISHED* $d/FAIL*  $d/lsf.o* $d/*.h5 $d/*.txt $d/fort.* > /dev/null 2>&1
+      $actionFile $d/commReady* $d/partnerReady* $d/hostReady* > /dev/null 2>&1
+  else
+      echo "Skipping '$d' (locked)"
+  fi
+  
+done
+

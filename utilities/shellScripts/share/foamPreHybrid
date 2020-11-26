@@ -1,0 +1,535 @@
+#!/bin/bash
+
+rans="RANS"
+config="RANS.config"
+meshGenL="blockMesh"
+meshGenR="blockMesh"
+
+nph=`grep -c "periodic hill" system/controlDict`
+if [ -z $nph ]; then
+    nph=0
+fi
+
+if [ $nph -gt 0 ]; then
+    meshGenL="meshHill.py"
+    meshGenR="meshHill.py"
+fi
+
+nimpact=`grep -c "impactFoam" system/controlDict`
+if [ -z $nimpact ]; then
+    nimpact=0
+fi
+
+if [ $nimpact -gt 0 ]; then
+    meshGenL="blockMesh"
+fi
+
+if [ "x$1" = "x-h" ]; then
+  echo "Usage: $(basename $0) [-h clean cleanRans mapCreate create linkProc link run]" >&2
+  echo "Create/clean/link a hybrid LES/RANS case with different meshes." >&2
+  echo "Require: Mesh files or blockMeshDict for RANS under RANS.config" >&2
+  echo "Specific usage as follows:"
+  echo -e "\nGet help"
+  echo  "    -h  Display this message"
+  echo -e "\nClean up case: "
+  echo "    clean       "
+  echo "        Clean symbolic links and processor dirs for parallel case." >&2
+  echo "    cleanRans   "
+  echo "        Clean symbolic links for a serial case." >&2
+  echo -e "\nCreate case: "
+  echo "    mapCreate sourceCase [-sourceTime time -consistent]" >&2
+  echo "        Create a hybrid case by mapping from another hybrid case." >&2
+  echo "        (Requires the uniform fields with BCs in ./RANS.config)" >&2
+  echo "    create      "
+  echo "        Create a hybrid case (serial/parallel depends on decompseParDict)" >&2
+  echo "        (Require ICs for under 0/ for LES and under 0/RANS for RANS)" >&2
+  echo -e "\nLink results: "
+  echo "    link    "
+  echo "        Reconstruct LES and RANS and link results " >&2
+  echo -e "\nUpdate serial to parallel: "
+  echo "    decompNlink "
+  echo "        Upgrade a serial hybrid case to a parallel one" >&2
+  exit 0
+fi
+
+
+function checkIsFoam {
+# Check this is indeed an OpenFoam case.
+    if [ ! -d system ]; then
+        echo "ERROR: This dir is not an OpenFOAM case" >&2
+        exit 1
+    fi
+}
+
+function checkIsHybrid {
+# Check this is indeed a hybrid case.
+    if [ ! -d $1/system ]; then
+        echo "ERROR: '$1' is not an OpenFOAM case" >&2
+        exit 1
+    fi
+    if [ ! -d $1/RANS/system ]; then
+        echo "ERROR: '$1' is not a hybrid case" >&2
+        exit 1
+    fi
+}
+
+function reconstructIfNeeded
+{
+    local    case=$1
+    local logname=$case
+
+    if [[ $case = "." ]]; then
+        logname=$(basename $PWD)
+    fi
+
+    if [ -d $case/processor0 ] ; then
+        latestdecomp=`ls $case/processor0 | grep '^[0-9]*\.\?[0-9]*$' | awk 'BEGIN {max = 0}{if ($1>max) {max=$1}} END {print max}'`
+        latestrecons=`ls | grep '^[0-9]*\.\?[0-9]*$' | awk 'BEGIN {max = 0}{if ($1>max) {max=$1}} END {print max}'`
+        if [[ $latestdecomp != $latestrecons ]]; then
+            echo ""; echo "I will reconstruct $latestdecomp as $latestrecons is less than $latestdecomp"; echo ""
+            reconstructPar -case $case -latestTime > reconstructPar-${logname}.log
+        else
+            echo "Case $case does not need reconstruction."
+        fi  
+    fi
+}
+
+checkIsFoam
+NP=`sed -n '/numberOfSubdomains/s/[^0-9]//gp' system/decomposeParDict` 
+if [ $NP -gt 1 ]; then 
+    parallel=y; 
+else
+    parallel=n;
+fi
+echo "Parallel case? " $parallel
+
+
+if [ -f constant/polyMesh/blockMeshDict ] &&
+    [ `grep -c periodic constant/polyMesh/blockMeshDict` -gt 0 ]; then
+    hill=y
+    echo "This is a periodic hill case."
+fi
+
+function cleanRans {
+    echo "Cleaning RANS dir ..."
+    /bin/rm -fr $rans
+    /bin/rm -fr  constant/$rans
+    /bin/rm -fr  system/$rans
+}
+
+function assertPreviousAction {
+    res=$1
+    shift
+    local action=$@
+    if [ x$res != x0 ]; then 
+        echo -e "Failed during this operation: \n $action "
+        exit 1
+    fi
+} 
+
+function setupConstantDir
+{
+    if [ -h constant/$rans ]; then rm constant/$rans; fi
+    if [ -d constant/$rans ]; then rm -fr constant/$rans; fi
+    
+    mkdir -p $rans/constant/polyMesh
+    ln -s -b  ../$rans/constant constant/$rans
+    ln -s -b  ../../constant/RASProperties  $rans/constant/RASProperties
+    ln -s -b  ../../constant/transportProperties   $rans/constant/transportProperties
+}
+
+function createRansControlDict
+{
+    # copy only the first part of the controlDict
+    sed '/functions/,//d' system/controlDict >  $rans/system/controlDict
+    
+    sed '/numberOfSubdomains/,/*/d' system/decomposeParDict >  $rans/system/decomposeParDict
+    echo "
+    numberOfSubdomains $NP;
+    method          manual;
+    manualCoeffs { dataFile \"cellDecompositionR\"; }
+    distributed     no;
+    roots           ( );
+    " >>  $rans/system/decomposeParDict
+}
+
+function setupSystemDir
+{
+    if [ -h system/$rans ];   then rm system/$rans; fi
+    if [ -d system/$rans ];   then rm -fr system/$rans; fi
+
+    mkdir $rans/system
+    
+    ln -s -b ../../system/fvSolution  $rans/system/fvSolution
+    ln -s -b ../../system/fvSchemes  $rans/system/fvSchemes
+    ln -s -b ../../system/mapFieldsDict  $rans/system/mapFieldsDict
+    
+    createRansControlDict
+
+    # Set proper symbolic link for "system"
+    ln -s -b ../$rans/system system/$rans
+}
+
+function rewriteRansControlDict
+{
+    # copy only the first part of the controlDict
+    sed '/functions/,//d' system/controlDict >  $rans/system/controlDict
+
+    sed '/numberOfSubdomains/,/*/d' system/decomposeParDict >  $rans/system/decomposeParDict
+    echo "
+    numberOfSubdomains $NP;
+    method          manual;
+    manualCoeffs { dataFile \"cellDecompositionR\"; }
+    distributed     no;
+    roots           ( );
+    " >>  $rans/system/decomposeParDict
+}
+
+
+function meshRans
+{
+    echo -e "\nPreparing mesh for RANS ..."
+    if [ -f $config/blockMeshDict ]; then
+        cp  $config/blockMeshDict $rans/constant/polyMesh/
+        if [ -f $config/meshParameters ]; then
+            cp  $config/meshParameters $rans/constant/polyMesh/
+        fi
+        cd RANS
+        if [ x$hill = "xy" ]; then
+            echo  "  Running meshHill.py on RANS case ..."
+            meshHill.py > meshHillRAS.log
+        else
+            echo "  Running blockMesh on RANS case ..."
+            $meshGenR > blockRAS.log
+        fi
+        cd ..
+    elif [ -f $config/faces ] &&
+         [ -f $config/neighbour ] &&
+         [ -f $config/owner ] &&
+         [ -f $config/points ] &&
+         [ -f $config/boundary ]; then
+        cp $config/* $rans/constant/polyMesh/
+    else
+        echo "You should put either the blockMesh file, "
+        echo "   or the actual mesh files for RANS under RANS.config!"
+        echo "But I did not find either of them. Exiting ..."
+        exit 1
+    fi
+    echo -e "Finished meshRans."
+}
+
+function meshLes
+{
+    echo -e "\nPreparing mesh for LES ..."
+    if [ -f constant/polyMesh/blockMeshDict ]; then
+        if [ x$hill = "xy" ]; then
+            echo "Running meshHill.py on LES case ..."
+            meshHill.py > meshHillLES.log
+        else
+            echo "Running blockMesh on LES case ..."
+            $meshGenL > blockLES.log
+        fi
+    elif [ -f constant/polyMesh/faces ] &&
+         [ -f constant/polyMesh/neighbour ] &&
+         [ -f constant/polyMesh/owner ] &&
+         [ -f constant/polyMesh/points ] &&
+         [ -f constant/polyMesh/boundary ]; then
+        echo "  No need to blockMesh LES. (Mesh files exist.)"
+    else
+        echo "  You should put either the blockMesh file, "
+        echo "     or the actual mesh files for RANS under RANS.config!"
+        echo "  But I did not find either of them. Exiting ..."
+        exit 1
+    fi
+    echo -e "  Finished meshLes."
+}
+
+
+function linkProcDir
+{
+    if [ x$parallel = "xy" ]; then
+        echo -e "\nLinking processor directories ..."
+        for n in `seq 0 $(($NP-1))`; do
+            mkdir processor$n/0/$rans/
+            mkdir processor$n/constant/$rans/
+            mv  $rans/processor$n/0/*  processor$n/0/$rans/ 
+            mv  $rans/processor$n/constant/*  processor$n/constant/$rans/ 
+            rmdir $rans/processor$n/0
+            rmdir $rans/processor$n/constant
+            ln -s -b ../../processor$n/0/$rans  $rans/processor$n/0
+            ln -s -b ../../processor$n/constant/$rans  $rans/processor$n/constant
+        done
+    fi
+}
+
+# Create $rans and make necessary symbolic links
+function createRans {
+    local iCreateNlink=y
+    local iBlockLES=y
+    local iDecompLES=y
+    local iBlockRAS=y
+    local iDecompRAS=y
+    local iLinkProc=y
+
+    if [ x$interactive = "xy" ]; then
+        echo "Create RANS and link constant/system/0 dirs? [y/n]"
+        read iCreateNlink
+        echo "Run blockMesh on LES case? [y/n]"
+        read iBlockLES
+        echo "Decompose LES case? [y/n]"
+        read iDecompLES
+        echo "Run blockMesh on RANS case? [y/n]"
+        read iBlockRAS
+        echo "Decompose RANS case? [y/n]"
+        read iDecompRAS
+        echo "Move RANS/processor*/0 to LES dir and create links there?"
+        read iLinkProc
+    else
+        echo "Creating RANS in non-interactive mode."
+    fi
+
+    if [ x$iCreateNlink = "xy" ]; then
+        if [ -d $rans ]; then
+            echo -e "RANS dir already exist. You may want clean it first ($0 -clean)."
+        else
+            mkdir RANS
+        fi
+
+        setupConstantDir
+        setupSystemDir
+        
+        # Link initial conditions
+        ln -s -b ../0/$rans  $rans/0
+    fi
+
+    if [ x$iBlockLES = "xy" ]; then
+        meshLes
+    fi
+
+    if [ x$parallel = "xy" ]; then
+        if [ x$iDecompLES = "xy" ]; then
+            echo "Decomposing LES case..."
+            decomposePar -cellDist -force > decompLES.log
+            assertPreviousAction $? "Decompose LES Case"
+        fi
+    else
+        echo -e "\nSerial case mode. Skipped parallel related operations."
+    fi
+    
+    if [ x$iBlockRAS = "xy" ]; then
+        meshRans
+    fi
+
+    if [ x$parallel = "xy" ]; then
+        if [ x$iDecompRAS = "xy" ]; then
+            echo -e "\nCalling ransCellToProcX to generate cellDecomposition file ..."
+            ransCellToProcX > generateRansCellToProc.log
+            assertPreviousAction $? "Decompose RANS according to LES decomposition"
+
+            echo -e "\nDecomposing RANS case ..."
+            decomposePar -case $rans -cellDist -force > decompRANS.log
+            assertPreviousAction $? "decompose RANS case"
+        fi
+        if [ x$iLinkProc = "xy" ]; then
+            linkProcDir
+        fi
+    fi
+
+    echo -e "\nFinished constructing $rans.\n"
+}
+
+
+# For serial hybrid case, only decomposition and link is necessary
+function decompNlink
+{
+    echo -e "\nDecompose and link a serial hybrid case... \n"
+    if [ x$parallel = "xy" ]; then
+        echo "Decomposing LES case..."
+        decomposePar -cellDist -force > decompLES.log
+        assertPreviousAction $? "Decompose LES Case"
+
+        createRansControlDict
+
+        echo -e "Calling ransCellToProcX to generate cellDecomposition file ..."
+        ransCellToProcX > generateRansCellToProc.log
+        assertPreviousAction $? "Decompose RANS according to LES decomposition"
+        
+        echo -e "Decomposing RANS case ..."
+        cd $rans
+        ln -s ../0/$rans  0
+        cd ../
+        decomposePar -case $rans -cellDist -force > decompRANS.log
+        assertPreviousAction $? "decompose RANS case"
+        echo -e "Linking processor dirs"
+        linkProcDir
+        
+        echo -e "Finished decompose & link operation\n"
+    fi
+
+}
+
+function run
+{
+    local prog=$1
+    shift
+    echo "Running $prog on this hybrid case: LES ..."
+    $prog $@
+    echo "Running $prog on this hybrid case: RANS ..."
+    $prog -case $rans $@
+}
+
+function checkFoamVersion
+{
+    local ver=$1
+    if [ X$WM_PROJECT_VERSION = "X1.6.y" ]; then
+        if [ X$ver = "Xx" ]; then 
+            echo -e "\nOpenFOAM version = $WM_PROJECT_VERSION. Required 1.6.x; Exiting "; 
+            exit 1; 
+        fi
+    elif [ X$WM_PROJECT_VERSION = "X1.6.x" ]; then
+        if [ X$ver = "Xy" ]; then
+            echo -e "\nOpenFOAM version = $WM_PROJECT_VERSION. Required 1.6.x; Exiting "; 
+            exit 1; 
+        fi
+    elif [ X$WM_PROJECT_VERSION = "X2.2.0" ]; then
+        echo -e "\nVersion OK."
+    elif [ X$WM_PROJECT_VERSION = "X2.2.x" ]; then
+        echo -e "\nVersion OK."
+    else
+        echo -e "\nPlease initialize your OpenFOAM environment"
+        echo "Exiting ..."
+        exit 1
+    fi
+    echo -e "\nOpenFOAM version check passed: version = $WM_PROJECT_VERSION"
+}
+
+function  linkResults {
+
+    if [ x$parallel = "xy" ] && [ -d processor0 ]; then
+        for n in `seq 0 $(($NP-1))`; do
+            for timeDir in `echo processor$n/0.[0-9]* processor$n/[1-9]*`; do
+                if [ -h $rans/$timeDir ]; then 
+                    /bin/rm  $rans/$timeDir;
+                fi
+                if [ -d $timeDir/$rans ]; then
+                    ln -s -b ../../$timeDir/$rans  $rans/$timeDir
+                fi
+            done
+        done
+        
+        if [ "x$recon" = "x0" ]; then
+            echo "No reconstruction of cases. Link only."
+        else
+
+            reconstructIfNeeded  "."
+            reconstructIfNeeded RANS
+        fi
+
+        for timeDir in `echo 0.[0-9]* [1-9]*`; do
+            if [ -h $rans/$timeDir ]; then 
+                /bin/rm  $rans/$timeDir
+            elif [ -d $rans/$timeDir ] && [ ! -d $timeDir/$rans ]; then
+                mv $rans/$timeDir $timeDir/$rans
+            fi
+            
+            if [ -d $timeDir/$rans ]; then
+                ln -s -b ../$timeDir/$rans  $rans/$timeDir
+            fi
+        done
+    else
+        for timeDir in `echo 0.[0-9]* [1-9]*`; do
+            if [ -h $rans/$timeDir ]; then 
+                /bin/rm  $rans/$timeDir
+            fi
+            
+            if [ -d $timeDir/$rans ]; then
+                ln -s -b ../$timeDir/$rans  $rans/$timeDir
+            fi
+        done
+    fi
+    touch $rans/$rans.OpenFOAM
+}
+
+function mapCase
+{   
+    echo "Mapping LES field ..."
+    mapFields $srcCase  $@ > mapLES.log
+    echo "Mapping RANS field ..."
+    mapFields $srcCase/RANS -case RANS  $@ > mapRAS.log
+}
+
+
+if [ "x$1" = "x" ]; then
+    checkIsFoam
+    checkFoamVersion
+    createRans
+    exit 0
+fi
+
+if [ "x$2" = "x-case" ]; then
+    cd $3
+fi
+
+checkFoamVersion
+
+# Choose action to execute
+case $1 in
+    cleanRans)
+        cleanRans
+        ;;
+    clean) 
+        cleanRans; 
+        echo "Cleaning processor dirs and log files."
+        if [ -d processor0 ]; then ~/bin/trash processor*; fi
+        rm -f *.log;
+        ;;
+    create)
+        if [ x$2 = "x-i" ];  then
+            interactive=y; 
+        else
+            interactive=n;
+        fi
+        createRans
+        ;;
+    mapCreate)
+        srcCase=$2
+        checkIsHybrid $srcCase
+        shift 2
+        if [ -d "0/uniform" ]; then mv 0/uniform $config/; fi
+        rm -fr 0/*
+        cp -r $config/RANS 0/
+        cp -r $config/LES/* 0/
+        if [ -d "$config/uniform" ]; then mv $config/uniform 0/; fi
+
+        parallel=n
+        createRans 
+        # possible to specify -sourceTime after "map" and the source case 
+        mapCase $@
+        parallel=y
+        rewriteRansControlDict
+        decompNlink
+        ;;
+    decompNlink)
+        decompNlink
+        ;;
+    run)
+        cmd=$2
+        if [ -n $cmd ]; then
+            shift 1
+            run $@
+        else
+            echo "What command do you want to run? specify after keyword run. Exiting ..."
+            exit 0
+        fi
+        ;;
+    link)
+        if [ "x$2" = "x-norecon" ]; then
+            recon=0
+        fi
+        linkResults
+        ;;
+    *)
+        echo "Arguments $@ not recognized. Exit without any operations."
+esac        
+
+

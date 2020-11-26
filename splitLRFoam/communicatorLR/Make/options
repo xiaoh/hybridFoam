@@ -1,0 +1,19 @@
+.PHONY: dummyrule
+
+$(FOAM_USER_APPBIN)/communicatorLR: $(OBJECTS_DIR)/communicatorLRVersion.o
+
+$(OBJECTS_DIR)/communicatorLRVersion.o: dummyrule
+
+EXE_INC = \
+    -I../library/lnInclude \
+    -I$(LIB_SRC)/meshTools/lnInclude \
+    -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(LIB_SRC)/sampling/lnInclude \
+    -L$(FOAM_USER_LIBBIN) 
+
+EXE_LIBS = \
+    -lsampling \
+    -lmeshTools \
+    -lfiniteVolume \
+    -lsplitInfrastructure
+

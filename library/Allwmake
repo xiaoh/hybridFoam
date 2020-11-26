@@ -1,0 +1,9 @@
+#!/bin/sh
+cd ${0%/*} || exit 1    # run from this directory
+set -x
+
+wmake libso libEmergencyExit
+./muTurbulenceModels/Allwmake
+wmake libso resolutionModels
+wmake libso hybridInfrastructure
+# ----------------------------------------------------------------- end-of-file

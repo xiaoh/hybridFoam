@@ -1,0 +1,4 @@
+communicatorLRVersion.Cver
+communicatorLR.C
+
+EXE = $(FOAM_USER_APPBIN)/communicatorLR

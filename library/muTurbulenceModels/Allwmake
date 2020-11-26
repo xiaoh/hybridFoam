@@ -1,0 +1,10 @@
+#!/bin/sh
+cd ${0%/*} || exit 1    # run from this directory
+set -x
+set -e
+
+wmake libso muTurbulenceModel || exit 1
+wmake libso muRAS || exit 1
+wmake libso muLES || exit 1
+
+# ----------------------------------------------------------------- end-of-file

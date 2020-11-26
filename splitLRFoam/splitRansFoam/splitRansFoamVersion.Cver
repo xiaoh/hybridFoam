@@ -1,0 +1,5 @@
+#include "splitRansFoamVersion.H"
+
+const char* const splitRansbuild = "BUILD_STRING"; 
+
+

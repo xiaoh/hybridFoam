@@ -1,0 +1,84 @@
+#!/bin/bash
+
+# Xmodule add foam
+
+# below just an absolutely unnecessary gimmick
+function countdown
+{
+        local OLD_IFS="${IFS}"
+        IFS=":"
+        local ARR=( $1 )
+        local SECONDS=$((  (ARR[0] * 60 * 60) + (ARR[1] * 60) + ARR[2]  ))
+        local START=$(date +%s)
+        local END=$((START + SECONDS))
+        local CUR=$START
+        while [[ $CUR -lt $END ]]; do
+            CUR=$(date +%s)
+            LEFT=$((END-CUR))
+            printf "\r     ... %02d ...       (Ctrl-C to terminate)" \
+                $((LEFT%60))
+            sleep 1
+        done
+        IFS="${OLD_IFS}"
+        echo "        "
+}
+
+function checkIsCase {
+# Check this is indeed an OpenFoam case.
+    if [ ! -d system ]; then
+        echo "ERROR: '$d' is not an OpenFOAM case" >&2
+        exit 1
+    fi
+}
+
+function checkFoamVersion {
+    if [ "x$WM_PROJECT_VERSION" = "x1.6.y" ]; then
+        echo "Foam version check passed:" 1.6.y 
+    elif [ -z "$WM_PROJECT_VERSION" ]; then
+        echo "Foam not initialized."
+        exit 0
+    else
+        echo "Foam version check passed:" 1.6.x 
+fi
+}
+
+if [ -z $1 ] ; then 
+	echo "As no casename is specified, script assumes that current working directory is the case directory..."
+	input=`basename $PWD`
+else
+	input=$@
+fi
+
+for case in $input; do
+
+    checkIsCase
+    checkFoamVersion
+
+    echo "starting operation on case $case"
+    cd $case
+    
+    if [ -d processor0 ] ; then
+        reconstructPar -latestTime 
+    fi
+    foamTwoD -create
+    cd Case2D/constant/polyMesh
+    sed 's/^Nz .*;/Nz 1;/' blockMeshDict | sed 's/^.*cyclic sides/    empty sides/' | sed 's/^Width 4.5;/Width 0.2;/' > blockMeshDict.tmp
+    cp blockMeshDict blockMeshDict.before-automatic-sed
+    rm -fr blockMeshDict
+    cp blockMeshDict.tmp blockMeshDict
+    rm -fr blockMeshDict.tmp
+    cp ../../../constant/polyMesh/meshParameters .
+    cd ../..
+    mkdir 0
+    blockMeshX
+    cd ..
+    cp /local/share/cliddiar/Example-OpenFoam-Dictionaries/postChannelDict.periodichill constant/postChannelDict
+    averageSpanwise -latestTime
+    foamTwoD -link
+#    cp /local/share/cliddiar/Example-OpenFoam-Dictionaries/sampleDict.periodichill Case2D/system/sampleDict
+    cd Case2D
+#    sample -latestTime
+    cd ../..
+done
+
+echo "Done!"

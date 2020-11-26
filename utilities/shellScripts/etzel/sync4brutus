@@ -1,0 +1,43 @@
+#!/bin/bash
+
+syncSrc()
+{
+    rsync -Cavz  \
+        xiaoh@brutus.ethz.ch:/cluster/home/mavt/xiaoh/GitRepos  /home/xiaoh/OpenFOAM/
+}
+
+syncRun()
+{
+
+    rsync -Cavz --exclude 'LOCK' --exclude 'core.*' --exclude 'exc-*' --exclude 'FAIL' \
+        xiaoh@brutus.ethz.ch:~/OpenFOAM/xiaoh-1.6.y/run/*  ~/local-home/OpenFOAM/xiaoh-brutus-1.6.y
+
+#    rsync -Cavz --exclude 'LOCK' --exclude 'core.*' --exclude 'exc-*' --exclude 'FAIL' \
+#        xiaoh@login.hector.ac.uk:/work/x01/x01/xiaoh/24-core/OpenFOAM/xiaoh-1.6.y/runs/*  ~/local-home/OpenFOAM/hectorRuns
+
+    rsync -Cavz --exclude 'LOCK' --exclude 'core.*' --exclude 'exc-*' --exclude 'FAIL' \
+        xiaoh@brutus.ethz.ch:/cluster/scratch/public/xiaoh/OF-runs/*  ~/local-home/OpenFOAM/xiaoh-brutus-scratch
+
+    rsync -Cavz --exclude 'LOCK' --exclude 'core.*' --exclude 'exc-*' --exclude 'FAIL' \
+        xiaoh@brutus.ethz.ch:/cluster/work/mavt/xiaoh/LammpsFoam-runs  ~/local-home/OpenFOAM/xiaoh-brutus-otherRuns
+
+    rsync -Cavz --exclude 'LOCK' --exclude 'core.*' --exclude 'exc-*' --exclude 'FAIL' \
+        xiaoh@brutus.ethz.ch:/cluster/work/mavt/xiaoh/IMPACT-runs  ~/local-home/OpenFOAM/xiaoh-brutus-otherRuns
+}
+
+if [ "x$1" = "xsrc" ]; then
+    echo "Sync code only"
+    syncSrc 
+elif [ "x$2" = "xrun" ]; then
+    echo "Sync run data only"
+    syncRun
+else
+    echo "Sync both code and run data"
+    syncSrc
+    syncRun
+fi
+
+
+
+
+

@@ -1,0 +1,26 @@
+#!/bin/bash
+
+set -x
+
+turbDir="$FOAM_SRC"/turbulenceModels/incompressible
+
+if [ "x$FOAM_SRC" = x ]; then
+    echo "Foam not initialized. Mu turbulence models not installed."
+    exit 1
+elif [ "x:$WM_PROJECT_VERSION" = "x:1.6.y" ]; then
+    echo Install mutable turbulence models to $turbDir ...
+else
+    echo FOAM version 1.6.y required, but $WM_PROJECT_VERSION  found.
+    exit 1
+fi
+
+rsync muTurbulenceModel/*.[HC]  $turbDir/turbulenceModel/
+rsync muRAS/muRASModel/*.[HC]  $turbDir/RAS/muRASModel/
+rsync muRAS/muLaunderSharmaKE/*.[HC]  $turbDir/RAS/muLaunderSharmaKE/
+rsync muRAS/muKEpsilon/*.[HC]  $turbDir/RAS/muKEpsilon/
+
+cp muAllwmake $turbDir/muAllwmake
+
+echo "Compile newly installed Mu turbulence models:"
+cd $turbDir
+./muAllwmake

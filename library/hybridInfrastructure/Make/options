@@ -1,0 +1,30 @@
+.PHONY: dummyrule
+
+$(FOAM_USER_LIBBIN)/libhybridInfrastructure.so: $(OBJECTS_DIR)/relaxForcingVersion.o
+
+$(OBJECTS_DIR)/relaxForcingVersion.o: dummyrule
+
+EXE_INC = \
+    -I$(LIB_SRC)/meshTools/lnInclude \
+    -I$(LIB_SRC)/transportModels \
+    -I$(LIB_SRC)/turbulenceModels \
+    -I$(LIB_SRC)/turbulenceModels/incompressible/LES/lnInclude \
+    -I$(LIB_SRC)/turbulenceModels/incompressible/turbulenceModel/lnInclude \
+    -I$(LIB_SRC)/turbulenceModels/LES/LESdeltas/lnInclude \
+    -I$(LIB_SRC)/turbulenceModels/incompressible/RAS/lnInclude \
+    -I$(LIB_SRC)/transportModels/incompressible/singlePhaseTransportModel \
+    -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(LIB_SRC)/sampling/lnInclude \
+    -I../resolutionModels/lnInclude \
+    -I../muTurbulenceModels/muTurbulenceModel/lnInclude \
+    -I../muTurbulenceModels/muRAS/lnInclude \
+    -I../muTurbulenceModels/muLES/lnInclude
+
+EXE_LIBS = \
+    -lincompressibleTurbulenceModel \
+    -lincompressibleRASModels \
+    -lincompressibleLESModels \
+    -lincompressibleTransportModels \
+//    -lfiniteVolume \
+    -lsampling \
+    -lmeshTools

@@ -1,0 +1,51 @@
+#!/bin/bash
+
+if [ $# -eq 0 ] || [ "x$1" = "x-h" ]; then
+  echo "Convert input directory for hybridFoam to chPisoFoam (LES/RANS)"
+  echo "Usage: $0 L " >&2
+  echo "   or: $0 R " >&2
+  exit 0;
+fi
+
+if [ -f "PISO-LES" ] || [ -f "PISO-RANS" ] ; then
+    echo "Data already in LES or RANS format. Exiting "
+    exit 1;
+fi
+
+gunzip 0/*.gz
+
+if [ "$1" = "L" ]; then
+    # Process directory 0/
+    echo "Converting hybrid input to LES input ..."
+    rm 0/*R
+    rename L "" 0/*L
+
+    # Modify three files: 
+    # turbulenceProperties, fvSolution, fvSchemes
+    cp ~/lib/foam/turbulenceProperties-LES constant/turbulenceProperties
+    rm system/fvS*
+    cp ~/lib/foam/fvSolution-LES system/fvSolution
+    cp ~/lib/foam/fvSchemes-LES  system/fvSchemes
+    touch "PISO-LES"
+elif [ "$1" = R  ]; then
+    echo "Converting hybrid input to RANS input ..."
+    rm 0/*L
+    rename R "" 0/*R
+    
+    cp ~/lib/foam/turbulenceProperties-RANS constant/turbulenceProperties
+    sed -e  's/mu//g' -e 's/KEpsilon/kEpsilon/g' constant/RASProperties > RAStmp
+    mv RAStmp constant/RASProperties
+    rm system/fvS*
+    cp ~/lib/foam/fvSolution-RANS system/fvSolution
+    cp ~/lib/foam/fvSchemes-RANS  system/fvSchemes
+    touch "PISO-RANS"
+else
+    echo "Usage: $0 L " >&2
+    echo "   or: $0 R " >&2
+fi
+
+# Modify controlDict
+sed -e '/Mu/d' -e 's/LRFoam/PisoFoam/' system/controlDict > tmp
+mv tmp system/controlDict
+
+echo "Finished!"

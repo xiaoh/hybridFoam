@@ -1,0 +1,7 @@
+This files in this directory are not compiled locally.  Instead, they
+are copied to be together with the OpenFOAM source codes (k-epsilon
+models etc.) and complied there.
+
+This is a work-around to avoid mysterious crach. Probably due to some
+internal bug of OpenFOAM (1.6). Future version may be free of this
+error.

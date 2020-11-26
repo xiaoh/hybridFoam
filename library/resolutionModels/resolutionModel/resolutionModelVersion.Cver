@@ -1,0 +1,7 @@
+#include "resolutionModel.H"
+void Foam::resolutionModel::printVersion()
+{
+//          |              [40 spaces]             |
+//          v (first character)                    v (last space)
+    Info<< "resolutionModel version:                BUILD_STRING\n";
+}

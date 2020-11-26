@@ -1,0 +1,41 @@
+
+averageSpanwise.C,18
+int main(48,1783
+
+channelIndex.C,323
+const char* Foam::NamedEnum<Foam::vector::components, 3>::names[names36,1423
+    Foam::channelIndex::vectorComponentsNames_;44,1574
+void Foam::channelIndex::walkOppositeFaces50,1733
+void Foam::channelIndex::calcLayeredRegions151,4713
+Foam::channelIndex::channelIndex211,6117
+Foam::channelIndex::channelIndex256,7087
+
+channelIndex.H,165
+#define channelIndex_H37,1389
+namespace Foam47,1612
+class channelIndexFoam::channelIndex55,1850
+            const scalarField& y(Foam::channelIndex::y131,3718
+
+channelIndexTemplates.C,151
+Foam::Field<T> Foam::channelIndex::regionSum(32,1344
+Foam::Field<T> Foam::channelIndex::collapse50,1775
+void Foam::channelIndex::graphField(70,2115
+
+collapse.H,232
+    vectorField CcMeanValues 1,0
+    vectorField UMeanValues 3,68
+    scalarField pPrime2MeanValues 5,132
+    symmTensorField UPrime2MeanValues 6,207
+    symmTensorField BMeanValues 7,287
+   scalar Z 18,571
+    forAll 21,647
+
+writeFields2D.H,0
+
+readTransportProperties.H,0
+
+readFields.H,0
+
+createMesh2D.H,0
+
+createFields2D.H,0

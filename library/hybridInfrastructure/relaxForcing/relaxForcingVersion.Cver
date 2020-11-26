@@ -1,0 +1,8 @@
+#include "relaxForcing.H"
+//build string start at position 41
+void Foam::relaxForcing::printVersion()
+{
+//          |              [40 spaces]             |
+//          v (first character)                    v (last space)
+    Info<< "relaxForcing/meshTalkChannel version:   BUILD_STRING\n";
+}

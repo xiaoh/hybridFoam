@@ -1,0 +1,36 @@
+#!/bin/bash
+
+receiver=Henning
+
+file=$@
+if [ -z $file ]; then
+    file="*"
+else
+    file=$@
+fi
+
+echo "rsync these files to isar:/local/share/: " $file
+rsync -Caz $file xiaoh@isar.ifd.mavt.ethz.ch:/local/share/xiaoh/
+echo "changing group ownership: "
+ssh  xiaoh@isar.ifd.mavt.ethz.ch  ~/bin/shareIsar
+
+
+echo "Sending email to $receiver"
+tmpFile="tmp.henning"
+echo "Hi $receiver," > $tmpFile
+echo  "" >> $tmpFile
+echo "The following files/directories have been sent to you:"  >> $tmpFile
+echo  "" >> $tmpFile
+echo  "$file" >> $tmpFile
+echo  "" >> $tmpFile
+echo "Please fetch them  on ISAR under the following dir:  /local/share/xiaoh/">> $tmpFile
+echo  "" >> $tmpFile
+echo "Best," >> $tmpFile
+echo "Heng">> $tmpFile
+echo  "" >> $tmpFile
+echo "--- NOTE: This email is generated automatically. Please don't reply. ---" >> $tmpFile
+
+mail -s "[No reply] Files from Heng Xiao $emailDate" -c xiaoh@ethz.ch cliddiar@student.ethz.ch < $tmpFile
+
+rm -f $tmpFile 
+echo "Finished!"

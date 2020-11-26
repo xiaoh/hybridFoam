@@ -1,0 +1,72 @@
+#!/bin/tcsh
+
+# call this script using crontab -e
+
+echo "Summary of jobs in queue on Brutus @ `date +%c`"
+echo "***"
+~/bin/ql -r
+echo " "
+~/bin/ql -p
+echo " "
+
+echo "Details of running jobs:"
+echo "***"
+set cpuno = 0 
+set cpucounter = 0
+
+foreach job (`bjobs -r | awk '{if (NF > 2) print $1}'`)  # changed from Henning
+
+    if ("$job" =~ [0-9][0-9][0-9][0-9][0-9]* )then
+        bpeek $job > temprundata_0.tmp
+
+        set cpucounter=`awk /^"nProcs : "/'{print $3; exit}' temprundata_0.tmp` # changed from Henning
+        @ cpuno = $cpuno + $cpucounter  # changed from Henning
+
+        set ln=`cat temprundata_0.tmp | awk '{ print NF}'`
+            
+        set hybrid=`grep -l coupling temprundata_0.tmp`
+
+        if ( ${%hybrid} == 0 ) then
+            awk /^"Time ="/'{printf $3 "  " "\t"}'/^"Courant Number mean"/'{printf $6 "  " "\t"}'/^"ExecutionTime"/'{print $7 "  " " "}' temprundata_0.tmp > temprundata_1.tmp
+        else
+            awk /^"Time ="/'{printf $3 "  " "\t"}'/^"LES Courant Number mean"/'{printf $7 "  " "\t"}'/^"ExecutionTime"/'{print $7 "  " " "}' temprundata_0.tmp > temprundata_1.tmp
+            awk /^"Time ="/'{printf $3 "  " "\t"}'/^"RAN Courant Number mean"/'{printf $7 "  " "\t"}'/^"ExecutionTime"/'{print $7 "  " " "}' temprundata_0.tmp > temprundata_1R.tmp
+        endif
+
+        echo -n "Case name: "
+        basename `awk /^"Case   :"/'{print $3}' temprundata_0.tmp`
+        echo -n "Job ID = $job; "
+        echo "No. of CPU = " $cpucounter   # changed from Henning
+        set linecnt=`wc -l temprundata_1.tmp | awk //'{print $1}'`
+        set linecntm1=`wc -l temprundata_1.tmp | awk //'{print $1-1}'`
+
+        set simtimeold=`awk -v var=${linecntm1} 'NR==var' temprundata_1.tmp | awk '{print $1}'`
+        set simtimenew=`awk -v var=${linecnt} 'NR==var' temprundata_1.tmp | awk '{print $1}'`
+        echo -n $simtimeold > temprundata_2.tmp
+        echo -n " " >> temprundata_2.tmp
+        echo $simtimenew >> temprundata_2.tmp
+        set simtimenew=`awk -v var=${linecnt} 'NR==var' temprundata_1.tmp | awk '{print $1}'`
+        set currenttimestep=`awk '{print $2-$1}' temprundata_2.tmp`
+        
+        echo -n "Current time step = "
+        echo -n $currenttimestep
+        echo "s"
+
+        if ( ${%hybrid} == 0 ) then        
+            awk 'BEGIN {max = 0; attime = 0}{if ($2>max) {max=$2; attime=$1; }} END {print "CourantMax= " max " @ run-time= " attime}' temprundata_1.tmp
+        else
+            awk 'BEGIN {max = 0; attime = 0}{if ($2>max) {max=$2; attime=$1; }} END {print "LES CourantMax= " max " @ run-time= " attime}' temprundata_1.tmp
+            awk 'BEGIN {maxR = 0; attimeR = 0}{if ($2>maxR) {maxR=$2; attimeR=$1; }} END {print "RANS CourantMax= " maxR " @ run-time= " attimeR}' temprundata_1R.tmp
+        endif
+
+        awk -v var=${linecnt} 'NR==var' temprundata_1.tmp | awk '{print "Clock time = " $3 "s; Run time = " $1 }'
+    endif
+
+    echo " "
+
+end
+echo "Total No. of CPUs used = $cpuno"
+echo "***"
+
+/bin/rm temprundata*.tmp
+

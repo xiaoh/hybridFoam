@@ -1,0 +1,22 @@
+static = staticModels
+dynamic = dynamicModels
+passive = passiveModels
+
+resolutionModel/resolutionModel.C
+resolutionModel/resolutionModelVersion.Cver
+
+$(static)/staticModel.C
+$(static)/wallVicinity.C
+$(static)/wallDistAndBoundBox.C
+
+$(dynamic)/dynamicModel.C
+$(dynamic)/turbLength.C
+$(dynamic)/turbLengthAniso.C
+$(dynamic)/resolvedTKE.C
+$(dynamic)/resolvedEPS.C
+
+$(passive)/passiveModel.C
+$(passive)/LKE.C
+$(passive)/LAnisoKE.C
+
+LIB = $(FOAM_USER_LIBBIN)/libresolutionModels

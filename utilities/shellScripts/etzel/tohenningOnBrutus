@@ -1,0 +1,44 @@
+#!/bin/bash
+
+
+file=$@
+if [ -z $1 ]; then
+    file="*"
+else
+    file=$@
+fi
+
+
+receiver="Henning"
+emailDate=$(date +%F-%H:%M:%S)
+dirName="/cluster/work/mavt/xiaoh/toHenning/"$(date +%F-%H%M%S)
+
+echo "Running from machine: " $(hostname)
+echo "Copying these files to brutus3:$dirName: " $file
+ssh xiaoh@brutus.ethz.ch "mkdir $dirName"
+scp -r $file xiaoh@brutus.ethz.ch:$dirName
+
+latest="/cluster/work/mavt/xiaoh/toHenning/latest"
+ssh xiaoh@brutus.ethz.ch "if [ -h $latest ]; then rm $latest; fi"
+ssh xiaoh@brutus.ethz.ch "ln -s  $dirName $latest"
+
+echo "Sending email to $receiver"
+tmpFile="tmp.henning"
+echo "Hi $receiver," > $tmpFile
+echo  "" >> $tmpFile
+echo "The following files/directories have been sent to you:"  >> $tmpFile
+echo  "" >> $tmpFile
+echo  "$file" >> $tmpFile
+echo  "" >> $tmpFile
+echo "Please fetch them  on brutus under the following dir:  $dirName">> $tmpFile
+echo "The symbolic link /cluster/work/mavt/xiaoh/toHenning/latest points to the directory. ">> $tmpFile
+echo  "" >> $tmpFile
+echo "Best," >> $tmpFile
+echo "Heng">> $tmpFile
+echo  "" >> $tmpFile
+echo "--- NOTE: This email is generated automatically. Please don't reply. ---" >> $tmpFile
+
+mail -s "[No reply] Files from Heng Xiao $emailDate" -c xiaoh@ethz.ch cliddiar@student.ethz.ch < $tmpFile
+
+rm -f $tmpFile
+echo "Finished!"

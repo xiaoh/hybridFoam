@@ -1,0 +1,122 @@
+
+fieldAverage/fieldAverage.C,820
+const Foam::word Foam::fieldAverage::EXT_MEAN 37,1446
+const Foam::word Foam::fieldAverage::EXT_PRIME2MEAN 38,1502
+void Foam::fieldAverage::resetFields(43,1653
+void Foam::fieldAverage::initialize(58,1910
+void Foam::fieldAverage::calcAverages(155,5053
+void Foam::fieldAverage::writeAverages(213,6394
+void Foam::fieldAverage::restartFields(226,6823
+void Foam::fieldAverage::writeAveragingProperties(236,7152
+void Foam::fieldAverage::readAveragingProperties(264,7885
+Foam::fieldAverage::fieldAverage317,9459
+Foam::fieldAverage::~fieldAverage(370,10602
+void Foam::fieldAverage::read(376,10724
+void Foam::fieldAverage::execute(395,11197
+void Foam::fieldAverage::end(412,11541
+void Foam::fieldAverage::write(417,11578
+void Foam::fieldAverage::updateMesh(442,12098
+void Foam::fieldAverage::movePoints(448,12178
+
+fieldAverage/fieldAverage.H,169
+#define fieldAverage_H87,2911
+namespace Foam95,3090
+class fieldAverageFoam::fieldAverage111,3492
+        virtual const word& name(Foam::fieldAverage::name291,8119
+
+fieldAverage/fieldAverageTemplates.C,1153
+void Foam::fieldAverage::addMeanField34,1396
+        typedef GeometricField<Type, fvPatchField, volMesh> fieldType;42,1537
+void Foam::fieldAverage::addPrime2MeanField90,2939
+        typedef GeometricField<Type1, fvPatchField, volMesh> fieldType1;99,3159
+        typedef GeometricField<Type2, fvPatchField, volMesh> fieldType2;100,3232
+void Foam::fieldAverage::calculateMeanFields(148,4748
+    typedef GeometricField<Type, fvPatchField, volMesh> fieldType;151,4832
+void Foam::fieldAverage::restartMeanFields(190,6233
+  typedef GeometricField<Type, fvPatchField, volMesh> fieldType;193,6315
+void Foam::fieldAverage::calculatePrime2MeanFields214,6944
+    typedef GeometricField<Type1, fvPatchField, volMesh> fieldType1;220,7082
+    typedef GeometricField<Type2, fvPatchField, volMesh> fieldType2;221,7151
+void Foam::fieldAverage::addMeanSqrToPrime2Mean267,8486
+    typedef GeometricField<Type1, fvPatchField, volMesh> fieldType1;273,8621
+    typedef GeometricField<Type2, fvPatchField, volMesh> fieldType2;274,8690
+void Foam::fieldAverage::writeFieldList(299,9307
+    typedef GeometricField<Type, fvPatchField, volMesh> fieldType;301,9382
+
+fieldAverageFunctionObject/fieldAverageFunctionObject.C,23
+namespace Foam31,1340
+
+fieldAverageFunctionObject/fieldAverageFunctionObject.H,145
+#define fieldAverageFunctionObject_H38,1482
+namespace Foam45,1668
+        fieldAverageFunctionObject;Foam::fieldAverageFunctionObject48,1738
+
+fieldAverage/IOFieldAverage.H,142
+#define IOfieldAverage_H34,1351
+namespace Foam41,1513
+    typedef IOOutputFilter<fieldAverage> IOFieldAverage;Foam::IOFieldAverage43,1530
+
+fieldAverageItem/fieldAverageItem.C,372
+const char* Foam::NamedEnum<Foam::fieldAverageItem::baseType, 2>::names[names32,1341
+    Foam::fieldAverageItem::baseTypeNames_;39,1510
+Foam::fieldAverageItem::fieldAverageItem(44,1637
+Foam::fieldAverageItem::fieldAverageItem(53,1764
+Foam::fieldAverageItem::~fieldAverageItem(64,2046
+void Foam::fieldAverageItem::operator=(Foam::fieldAverageItem::operator=70,2176
+
+fieldAverageItem/fieldAverageItem.H,893
+#define fieldAverageItem_H47,1659
+namespace Foam54,1812
+class fieldAverageItemFoam::fieldAverageItem71,2302
+        enum baseTypeFoam::fieldAverageItem::baseType78,2413
+            ITER,Foam::fieldAverageItem::baseType::ITER80,2445
+            TIMEFoam::fieldAverageItem::baseType::TIME81,2463
+            const word& fieldName(Foam::fieldAverageItem::fieldName129,3245
+            const Switch& mean(Foam::fieldAverageItem::mean135,3404
+            const Switch& prime2Mean(Foam::fieldAverageItem::prime2Mean141,3569
+            const word base(Foam::fieldAverageItem::base147,3727
+            Switch ITERBase(Foam::fieldAverageItem::ITERBase153,3882
+            Switch timeBase(Foam::fieldAverageItem::timeBase159,4029
+        friend bool operator==Foam::fieldAverageItem::operator==171,4233
+        friend bool operator!=Foam::fieldAverageItem::operator!=184,4564
+
+fieldAverageItem/fieldAverageItemIO.C,132
+Foam::fieldAverageItem::fieldAverageItem(33,1382
+Foam::Istream& Foam::operator>>(52,1882
+Foam::Ostream& Foam::operator<<(71,2353
+
+fieldAverage/org-fieldAverage.C,770
+const Foam::word Foam::fieldAverage::EXT_MEAN 37,1446
+const Foam::word Foam::fieldAverage::EXT_PRIME2MEAN 38,1502
+void Foam::fieldAverage::resetFields(43,1653
+void Foam::fieldAverage::initialize(58,1910
+void Foam::fieldAverage::calcAverages(154,5052
+void Foam::fieldAverage::writeAverages(206,6284
+void Foam::fieldAverage::writeAveragingProperties(219,6713
+void Foam::fieldAverage::readAveragingProperties(247,7391
+Foam::fieldAverage::fieldAverage298,8882
+Foam::fieldAverage::~fieldAverage(348,9980
+void Foam::fieldAverage::read(354,10102
+void Foam::fieldAverage::execute(371,10498
+void Foam::fieldAverage::end(380,10592
+void Foam::fieldAverage::write(385,10629
+void Foam::fieldAverage::updateMesh(407,11074
+void Foam::fieldAverage::movePoints(413,11154
+
+fieldAverage/save-fieldAverage.C,771
+const Foam::word Foam::fieldAverage::EXT_MEAN 37,1446
+const Foam::word Foam::fieldAverage::EXT_PRIME2MEAN 38,1502
+void Foam::fieldAverage::resetFields(43,1653
+void Foam::fieldAverage::initialize(58,1910
+void Foam::fieldAverage::calcAverages(155,5144
+void Foam::fieldAverage::writeAverages(212,6494
+void Foam::fieldAverage::writeAveragingProperties(226,6926
+void Foam::fieldAverage::readAveragingProperties(254,7659
+Foam::fieldAverage::fieldAverage306,9232
+Foam::fieldAverage::~fieldAverage(359,10375
+void Foam::fieldAverage::read(365,10497
+void Foam::fieldAverage::execute(383,10938
+void Foam::fieldAverage::end(400,11209
+void Foam::fieldAverage::write(405,11246
+void Foam::fieldAverage::updateMesh(430,11730
+void Foam::fieldAverage::movePoints(436,11810

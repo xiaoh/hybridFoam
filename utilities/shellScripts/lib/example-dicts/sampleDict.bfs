@@ -1,0 +1,103 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  1.6                                   |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      sampleDict;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+setFormat raw;
+
+surfaceFormat raw;
+
+interpolationScheme cellPointFace;
+
+Yloc 6.0; // make it easier to change the Y-location of the sampling sets
+Zloc 0.1; // make it easier to change the Z-location of the sampling sets
+NoP 1000; // the number of interpolationpoints used when sampling with equidistant spacing along a line
+sampleType uniform;//midPoint;//uniform
+
+fields
+(
+    U2
+    RResolved2
+    //    pPrime2Mean2
+    B2
+);
+
+
+sets
+(
+    x-9.0
+    {
+      type    $sampleType;
+      axis    y;
+      start   (-8.80 0 $Zloc );
+      end     (-8.80 $Yloc $Zloc );
+      nPoints $NoP;
+    }
+    x-5.0
+    {
+      type    $sampleType;
+      axis    y;
+      start   (-5 0 $Zloc );
+      end     (-5 $Yloc $Zloc );
+      nPoints $NoP;
+    }
+    x-1.0
+    {
+      type    $sampleType;
+      axis    y;
+      start   (-1 0 $Zloc );
+      end     (-1 $Yloc $Zloc );
+      nPoints $NoP;
+    }
+    x4.0
+    {
+      type    $sampleType;
+      axis    y;
+      start   ( 4 0 $Zloc);
+      end     ( 4 $Yloc $Zloc );
+      nPoints $NoP;
+    }
+    x6.0
+    {
+      type    $sampleType;
+      axis    y;
+      start   ( 6 0 $Zloc );
+      end     ( 6 $Yloc $Zloc );
+      nPoints $NoP;
+    }
+    x10.0
+    {
+      type    $sampleType;
+      axis    y;
+      start   ( 10 0 $Zloc );
+      end     ( 10 $Yloc $Zloc );
+      nPoints $NoP;
+    }
+    x19.0
+    {
+      type    $sampleType;
+      axis    y;
+      start   ( 19 0 $Zloc );
+      end     ( 19 $Yloc $Zloc );
+      nPoints $NoP;
+    }
+        
+);
+
+surfaces        ();
+
+// ************************************************************************* //

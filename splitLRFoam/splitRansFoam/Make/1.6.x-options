@@ -1,0 +1,30 @@
+  EXE_INC = \
+    -I$(LIB_SRC)/meshTools/lnInclude \
+    -I$(LIB_SRC)/transportModels \
+    -I$(LIB_SRC)/turbulenceModels \
+    -I$(LIB_SRC)/transportModels/incompressible/singlePhaseTransportModel \
+    -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I../library/hybridInfrastructure/mutableIncoTurbulenceModels/muTurbulenceModel/lnInclude \
+    -I../library/hybridInfrastructure/mutableIncoTurbulenceModels/muRAS/lnInclude \
+    -I../library/hybridInfrastructure/mutableIncoTurbulenceModels/muLES/lnInclude \
+    -I$(LIB_SRC)/turbulenceModels/LES/LESdeltas/lnInclude \
+    -I../library/hybridInfrastructure/hybridInfrastructure/meshTalkChannel/ \
+    -I../library/libEmergencyExit/lnInclude \
+    -I$(LIB_SRC)/sampling/lnInclude \
+    -IincludeLR \
+    -I../library/hybridInfrastructure/resolutionModels/lnInclude \
+    -I../library/hybridInfrastructure/hybridInfrastructure/lnInclude \
+    -L$(FOAM_USER_LIBBIN)   
+
+EXE_LIBS = \
+    -lincompressibleMuTurbulenceModels \
+    -lincompressibleMuRASModels \
+    -lincompressibleMuLESModels \
+    -lincompressibleTransportModels \
+    -lfiniteVolume \
+    -lsampling \
+    -lmeshTools \
+    -lresolutionModels \
+    -lhybridInfrastructure \
+    -lEmergencyExit
+

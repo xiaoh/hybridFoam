@@ -1,0 +1,6 @@
+meshTalkChannel/meshTalkChannel.C
+relaxForcing/relaxForcingVersion.Cver
+relaxForcing/relaxForcing.C
+chPressureGrad/chPressureGrad.C
+
+LIB = $(FOAM_USER_LIBBIN)/libhybridInfrastructure

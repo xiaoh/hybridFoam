@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# Sync the brutus and clean the directories
+# run as cron job
+
+logFile="$HOME/log.sync2brutus.isar"
+#config="$HOME/.ssh/config.isar"
+config="$HOME/.ssh/config"
+Email='-c cliddiar@student.ethz.ch xiaoh@ethz.ch'
+
+echo "If empty, it is probably because connection to brutus failed." > $logFile
+~/bin/sync4Henning >> $logFile && ssh -F $config xiaoh@brutus.ethz.ch '~/bin/cronPurgeRuns.sh  /cluster/work/mavt/xiaoh/Henning-runs' || mail -s "Exception from syncNcleanBrutus.Henning (isar)" $Email < $logFile
+/bin/rm $logFile

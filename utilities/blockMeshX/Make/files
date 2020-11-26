@@ -1,0 +1,30 @@
+curvedEdges = curvedEdges
+
+$(curvedEdges)/curvedEdge.C
+$(curvedEdges)/lineEdge.C
+$(curvedEdges)/polyLine.C
+$(curvedEdges)/polyLineEdge.C
+$(curvedEdges)/arcEdge.C
+$(curvedEdges)/BSpline.C
+$(curvedEdges)/lineDivide.C
+$(curvedEdges)/CatmullRomSpline.C
+$(curvedEdges)/splineEdge.C
+
+blockMesh.C
+blockDescriptor.C
+setEdge.C
+block.C
+createTopology.C
+checkBlockMesh.C
+createBlockOffsets.C
+createMergeList.C
+createPoints.C
+createCells.C
+createPatches.C
+blockPoints.C
+blockCells.C
+blockBoundary.C
+
+blockMeshApp.C
+
+EXE = $(FOAM_USER_APPBIN)/blockMeshX

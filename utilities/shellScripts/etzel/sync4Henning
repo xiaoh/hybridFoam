@@ -1,0 +1,13 @@
+#!/bin/bash
+
+
+#rsync -e "ssh -F /home/xiaoh/.ssh/config.isar" -Cavz --exclude 'LOCK' --exclude 'core.*' --exclude 'exc-*' --exclude 'FAIL' \
+#        xiaoh@brutus.ethz.ch:/cluster/work/mavt/xiaoh/Henning-runs/*   /local/share/xiaoh/
+
+rsync  -Cavz --exclude 'LOCK' --exclude 'core.*' --exclude 'exc-*' --exclude 'FAIL' \
+        xiaoh@brutus.ethz.ch:/cluster/work/mavt/xiaoh/Henning-runs/*   /local/xiaoh/henning-emergency
+
+
+
+
+

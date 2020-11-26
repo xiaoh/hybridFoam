@@ -1,0 +1,11 @@
+#!/bin/bash
+
+file=$@
+if [ -z $file ]; then
+    file="*"
+else
+    file=$@
+fi
+
+echo "Copying these files to venant:~/etzel/: " $file
+scp -r $file xiaoh@venant:~/etzel/

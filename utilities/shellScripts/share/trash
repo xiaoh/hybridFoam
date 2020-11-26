@@ -1,0 +1,28 @@
+#!/bin/bash
+
+if [ "x$1" = "x-h" ]; then
+  echo "Usage: $0 dir1 ..." >&2
+  exit 0
+fi
+
+if [[ `hostname` =~ "brutus" ]]; then  
+    trashDir="/cluster/scratch/public/xiaoh/trash"
+elif [[ `hostname` =~ "mac" ]]; then
+    trashDir="/home/xiao/trash/"  
+else
+    trashDir="/local/xiaoh/trash/"
+fi
+
+if [ $# -eq 0 ] || [ "x$1" = "x-f" ]; then
+    echo "Not trashing any files/dirs."
+    exit 0;
+  else
+  DIRS=$@
+fi
+
+for d in $DIRS; do
+  echo "Trashing directory/file '$d' to $trashDir"
+  tmpName=$d.$(date +%F-%H:%M:%S).$RANDOM
+  mv $d $tmpName
+  mv $tmpName $trashDir
+done

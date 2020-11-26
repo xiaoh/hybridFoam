@@ -1,0 +1,14 @@
+#!/bin/bash
+
+
+file=$@
+if [ -z $file ]; then
+    file="*"
+else
+    file=$@
+fi
+
+echo "rsync these files to isar:/local/xiaoh/etzel: " $file
+rsync -Caz $file xiaoh@isar.ifd.mavt.ethz.ch:/local/xiaoh/etzel/
+
+

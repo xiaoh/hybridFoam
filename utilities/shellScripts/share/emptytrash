@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if [[ `hostname` =~ "brutus" ]]; then  
+#    trashDir="/cluster/home/mavt/xiaoh/work/trash"
+     trashDir="/cluster/scratch/public/xiaoh/trash"
+else
+    trashDir="/local/xiaoh/trash/"
+fi
+
+#echo "Trashing $trashDir/*"
+/bin/rm -fr $trashDir/*

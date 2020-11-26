@@ -1,0 +1,211 @@
+\documentclass[11pt]{article}
+\usepackage{geometry}                % See geometry.pdf to learn the layout options. There are lots.
+\geometry{a4paper}                   % ... or a4paper or a5paper or ...
+%\geometry{landscape}                % Activate for for rotated page geometry
+\usepackage[parfill]{parskip}    % Activate to begin paragraphs with an empty line rather than an indent
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{color}
+\usepackage{amsmath}
+\usepackage{epstopdf}
+\DeclareGraphicsRule{.tif}{png}{.png}{`convert #1 `dirname #1`/`basename #1 .tif`.png}
+
+\title{Implementation of an Elliptic Reynolds Stress Transport Model in OpenFOAM}
+\author{Heng Xiao}
+%\date{}                                           % Activate to display a given date or no date
+
+\begin{document}
+\maketitle
+\section{LRR-IP Model}
+\subsection{Reynolds Stress Transport Equations}
+The Reynolds stress transport equation and the corresponding dissipation equation read:
+
+\begin{eqnarray}
+\frac{\partial \langle u_{i} u_{j} \rangle}{\partial t} + \frac{\partial U_{k} \langle u_{i} u_{j} \rangle}{\partial x_{k}} &=& P_{ij} + D_{ij} + \phi_{ij} - \varepsilon_{ij} \\
+\frac{\partial \varepsilon}{\partial t} + \frac{\partial U_{k} \varepsilon }{\partial x_{k}} &=& \frac{C_{\varepsilon 1}P - C_{\varepsilon 2} \;\varepsilon }{T} + \frac{\partial}{\partial x_{i}}{ \left( C_{\varepsilon} T \langle u_{i} u_{j} \rangle \frac{\partial \varepsilon} {\partial x_{j}} \right)  + \frac{\partial}{\partial x_{k}}} \left( \nu \frac{\partial \varepsilon}{\partial{x_{k}}} \right)
+\end{eqnarray}
+where:
+\begin{align*}
+U_{k} =&  \textrm{ the mean velocity.} \\
+\langle u_{i} u_{j} \rangle =&
+\textrm{ Reynolds stress tensor (solved variable; 6 components).} \\
+P_{ij} =& \textrm{ Production term (closed term).} \\
+D_{ij} =& D_{ij}^{t} + D_{ij}^{\nu} \\
+D_{ij}^{t} =& \textrm{ Reynolds stress flux term (diffusion; modeling required.} \\
+	&  \textrm{ usually Daly-Harlow model.  This is not a critical term.)} \\
+D_{ij}^{\nu} = & \textrm{ viscous flux term.} \\
+\phi_{ij}  =& \textrm{ Pressure-rate-of-strain tensor; (most important term; many models exist!) }\\
+\varepsilon_{ij} =& \textrm{ dissipation (modeling required)} \\
+T =& \frac{k}{\varepsilon} \textrm{ is the turbulent time scale.}
+\end{align*}
+The connection between $\varepsilon$ and $\varepsilon_{ij}$: in high reynolds number flows, the dissipation is isotropic, meaning
+\begin{equation}
+\varepsilon = \frac{2}{3}\varepsilon_{ij} \delta_{ij}
+\end{equation}
+
+\subsection{Modeling}
+The terms are explained as follows. The focus is on the modeling instead of on the exact expression.
+
+\paragraph{Production} term is closed, as explained above:
+\begin{equation}
+P_{ij} = - \langle u_{i} u_{k} \rangle \frac{\partial U_{j}}{\partial x_{k}} - \langle u_{j} u_{k} \rangle \frac{\partial U_{i}}{\partial x_{k}}
+\end{equation}
+representing the extraction of turbulent energy from the mean flow. The implementation in OpenFOAM is:
+\begin{center}
+\verb+P = - twoSymm(R & grad(U))+
+\end{center}
+
+\paragraph{Reynolds stress flux} term is modeled as:
+\begin{equation}
+D_{ij}^{T} = -  \frac{\partial} {\partial x_{l}} \left( C_{s} T \langle u_{l} u_{m} \rangle \frac{\partial \langle u_{i} u_{j} \rangle}{\partial x_{m}} \right)
+\end{equation}
+
+\paragraph{Viscous flux} term is:
+\begin{equation}
+D_{ij}^{\nu} = -  \frac{\partial} {\partial x_{k}}\left( \nu \frac{\partial \langle u_{i} u_{j} \rangle}{\partial x_{k}} \right)
+\end{equation}
+
+In OpenFOAM the Reynolds stress flux and viscous flux are collectively implemented as:
+\begin{center}
+\verb#D  = laplacian(nut + nu, R)#
+\end{center}
+where $\nu_{t} = C_{\mu} k^{2} / \varepsilon$, same as in the two-equation $k$--$\varepsilon$ models. This departure from the standard model is probably due to stability considerations.
+
+\paragraph{Pressure-Rate-of-Strain } is the most challenging term to model. Many models exist. One of the most simple and linear model is LRR-IP model (Launder, Reece and Rodi -- Isotropization of Production), which reads:
+\begin{align}
+\phi_{ij} =& \underbrace{- 2C_{R} \, \varepsilon \;  b_{ij}}_{\textrm{Rotta's model for } \phi^{s}} +  \underbrace{C_{2} (P_{ij} - \frac{2}{3}P\delta_{ij}) }_{\textrm{isotropization of production model for } \phi^{r} }\\
+b_{ij} =& \; \frac{\langle u_{i} u_{j} \rangle}{\langle u_{k} u_{k} \rangle} - \frac{1}{3} \delta_{ij}
+\end{align}
+where $\phi_{s}$ and $\phi_{r}$ are slow and rapid part, respectively.
+In OpenFOAM, the pressure-rate-of-strain term is implemented as:
+\begin{center}
+\verb#- Cr * epsilon/k * R + 2/3 * Cr * epsilon * I - C2 * dev(P)#
+\end{center}
+where the first term is treated implicitly and the rest are treated explicitly.
+
+Finally, the dissipation term is simply implemented in its isotropic form as:
+\begin{center}
+\verb# - epsilon * I #
+\end{center}
+which can be merged with the second term in the pressure-rate-of-strain.
+
+Now we look at the dissipation equation.  The production $P$ is half the trace of the production tensor above, i.e.  $P = P_{ii}$.  Implemented as
+\begin{center}
+\verb# G = 0.5 * mag( tr(P) )#
+\end{center}
+
+\paragraph{The diffusion terms} including the Reynolds stress-related diffusion and the viscous diffusion are isotropized in a similar way as in the Reynolds stress equations, and are implemented as:
+\begin{center}
+\verb# laplacian(nut/sigmEps + nu,  epsilon)#
+\end{center}
+where $\sigma_{\varepsilon}$ is a constant.
+
+\section{Hanjalic Elliptic Blending Model}
+To make the LRR-IP model valid for near-wall turbulence, the following modifications are make in the Hanjalic Elliptic Blending Model:
+\begin{enumerate}
+\item An elliptic equation for $\alpha$ is solved, indicating the wall distance. The gradient of $\alpha$  indicates the wall normal direction.
+\item The $\varepsilon$ equation is modified to make it valid near the wall.
+\item The dissipation term in the Reynolds stress equation are implemented in an anisotropic way, in contrast to the current isotropic form.
+\item The pressure-rate-of-strain is modified to become a blending of the current model representing the homogeneous contribution and a ``wall-contribution''.
+\item Turbulent time- and length-scales are bounded by near-wall turbulent  Kolmogorov scaling.
+\end{enumerate}
+
+The implementation here follows a later version (Thielen et al. 2005. IJHMT), which differs from the original version in (Manceau and Hanjalic, 2002. POF).
+
+In our implementation, we have the following additional modifications (which are not present in the Hanjalic blending model):
+\begin{enumerate}
+\item Limited the Kolmogorov time and lengths scales in the viscous sublayer. This is because in the free stream edge of the boundary layer, $\varepsilon$ approaches zero and it is possible for the Kolmogorov scales to dominate, which is not correct. This is discussed and justified in (Durbin 1993). This piece of code is copied from an earlier implementation of V2F model.
+\item Used
+\[
+\nu_{t} = C_{\mu} \bar{v^{2}} T \equiv C_{\mu}  \langle u_{i} u_{j} \rangle \, n_{i} n_{j} \, T
+\]
+as opposed to the formulation $\nu_{t} = C_{\mu} k^{2}/\varepsilon$ in the two-equation model.  An alternative is to damp $\nu_{t}$ with $\alpha$ or a function of $\alpha$ (e.g.  $\alpha^{2}$ or $1-e^{-5\alpha}$).  Note that if anisotropic diffusion models for $R$ and $\varepsilon$ are used, a formulation for $\nu_{t}$ is not necessary.
+\end{enumerate}
+
+The items above are explained as below.
+\subsection{Elliptic Equation for $\alpha$}
+To account for the influence of the wall, an elliptic equation for $\alpha$ is solved:
+\begin{equation}
+\alpha - L^{2} \nabla^{2} \alpha = 1
+\end{equation}
+where
+\begin{equation}
+T = \max \left( \frac{k}{\varepsilon}, C_{t} \left( \frac{\nu}{\varepsilon}\right) ^{1/2} \right)
+\end{equation}
+where
+\begin{equation}
+L = C_{L} \max \left(  \frac{k^{3/2}}{\varepsilon}, C_{\eta} \frac{\nu^{3/4}}{\varepsilon^{1/4}} \right)
+\end{equation}
+The directional of $\alpha$ is computed as follows:
+\begin{equation}
+\mathbf{n} = \frac{\nabla \alpha}{\| \nabla \alpha \|}
+\label{n}
+\end{equation}
+
+\subsection{Dissipation Equation}
+The dissipation equation in the context of the new model is:
+\begin{align*}
+\frac{\partial \varepsilon}{\partial t} + \frac{\partial U_{k} \varepsilon }{\partial x_{k}} = & \frac{C_{\varepsilon 1}P - C_{\varepsilon 2} \;\varepsilon }{T} + \frac{\partial}{\partial x_{i}}{ \left( C_{\varepsilon} T \langle u_{i} u_{j} \rangle \frac{\partial \varepsilon} {\partial x_{j}} \right)  + \frac{\partial}{\partial x_{k}}} \left( \nu \frac{\partial \varepsilon}{\partial{x_{k}}} \right)   \\
+& {\color{red} + C_{\varepsilon 3} \; \nu \frac{k}{\varepsilon} \langle u_{j} u_{k} \rangle \left( \frac{\partial^{2} U_{i}}{\partial x_{j} \partial x_{l}} \right) \left(\frac{\partial^{2} U_{i}}{\partial x_{k} \partial x_{l}} \right) }
+\end{align*}
+The additional term compared to above is indicated as red.
+This term (starting with $C_{\varepsilon 3}$) has second-order spatial derivatives and tends to cause instability.  Therefore, it is left out for now. Instead, the coefficient $C_{\varepsilon 1}$ is modified as follows:
+\begin{equation}
+\color{red}
+C_{\varepsilon 1} = 1.4 \left( 1 + 0.03 (1-\alpha^{2}) \sqrt{\frac{k}{\langle u_{i} u_{j} \rangle n_{i} n_{j}}} \right) \label{ce1}
+\end{equation}
+where $\alpha$ and $n_{i}$ are explained in the previous subsection.
+Implementation of Equations~(\ref{n}) and (\ref{ce1}):
+\begin{center}
+\verb# n = fvc:grad(alpha);#  \\
+\verb# n /= mag(n);# \\
+\verb# nn = n * n;# \\
+\verb# ka = k * alpha;# \\
+\verb# ceps1 = 1.4 * (1 + 0.03 * ( 1 - sqr(a)) * sqrt(k/(R && nn))# \\
+\end{center}
+
+\subsection{Reynolds Stress Equation}
+The Reynolds stress equation now reads:
+\begin{equation}
+\frac{\partial \langle u_{i} u_{j} \rangle}{\partial t} + \frac{\partial U_{k} \langle u_{i} u_{j} \rangle}{\partial x_{k}} = P_{ij} + D_{ij} + {\color{red}\phi_{ij}^{*} - \varepsilon_{ij}} \\
+\end{equation}
+The two terms which are different from the LRR-IP model are indicated as red. The difference lies in the fact that the pressure-rate-of-strain and the dissipation has to account for the presence of the wall.
+
+The new model for pressure-rate-of-strain is a blending of two contributions: the homogeneous contribution $\phi_{ij}^{h}$ and the wall contribution $\phi_{ij}^{w}$. The homogeneous contribution is the same as in LRR-IP (or any other model such as SSG).
+That is,
+\begin{align}
+\phi_{ij}^{*} = & (1-\alpha^{2}) \phi_{ij}^{w} + \alpha^{2} \; \phi_{ij}^{h}  \\
+\phi_{ij}^{w}  = & -5 \frac{\varepsilon}{k} \left(  \langle u_{i} u_{k} \rangle n_{j} n_{k}
++ \langle u_{j} u_{k} \rangle n_{i} n_{k}  - \frac{1}{2} \langle u_{k} u_{l} \rangle n_{k} n_{l}  (n_{i}n_{j} + \delta_{ij})\right)  \label{phiw} \\
+\phi_{ij}^{h} = & - 2C_{R} \, \varepsilon \;  b_{ij} +  C_{2} (P_{ij} - \frac{2}{3}P\delta_{ij}) \\
+\end{align}
+
+Implementation of Equation~(\ref{phiw}) is as follows:
+\begin{center}
+\verb# psw = -5 * epsilon / k * (twoSymm(R & nn) - 0.5 * (R && nn) * (nn + I)) #
+\end{center}
+
+The model for the anisotropic dissipation is:
+\begin{align}
+\varepsilon_{ij} = & (1-\alpha^{2}) \langle u_{i} u_{j} \rangle \frac{k}{\varepsilon} + \frac{2}{3} \alpha^{2}  \varepsilon \delta_{ij}  \label{epsij}\\
+\end{align}
+
+Implementation of Equations~(\ref{epsij})
+\begin{center}
+\verb# fvm:Sp((1- sqr(a)) * k / epsilon, R) + twoThirdsI * epsilon * sqr(a)#
+\end{center}
+
+\subsection{Boundary Conditions}
+\begin{equation}
+U_{i} = 0;  \;\; \langle u_{i} u_{j} \rangle = 0; \;\;  \varepsilon = 2\nu \frac{k}{y^{2}};
+\;\;  \alpha = 0
+\end{equation}
+The boundary condition for $\varepsilon$ is implemented as follows:
+\begin{enumerate}
+\item Set the cells adjacent to the wall according to the expression above.
+\item Use \verb#epsEqn().manipulateBoundary()# to enforce these values in these cells.
+\end{enumerate}
+
+\section{Original Durbin Elliptic Relaxation Model}
+
+\end{document}

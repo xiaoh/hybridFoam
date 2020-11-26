@@ -1,0 +1,100 @@
+#!/bin/bash
+
+case="Case2D"
+
+if [ x"$1" = "x-caseName" ]; then
+    case="$2"
+    shift 2
+fi
+
+echo "2D Case name: $case"
+
+function clean2D {
+    /bin/rm -fr $case
+    /bin/rm -fr  constant/$case
+    /bin/rm -fr  system/$case
+}
+
+# Create $case and make necessary symbolic links
+function create2D {
+    if [ -d $case ]; then
+        clean2D
+        echo "Case already exist. Forced cleaning."
+        # echo "Case already exist. Please clean it first ($0 -clean)."
+        # exit 1
+    fi
+
+    if [ -h constant/$case ]; then rm -f constant/$case; fi
+    if [ -h system/$case ];   then rm -f system/$case; fi
+
+    mkdir -p $case/constant/polyMesh
+    ln -s  ../$case/constant constant/$case
+    if [ -f constant/polyMesh/blockMeshDict ]; then
+        cp constant/polyMesh/blockMeshDict $case/constant/polyMesh/
+    fi
+
+    if [ -f constant/polyMesh/meshParameters ]; then
+        cp constant/polyMesh/meshParameters $case/constant/polyMesh/
+    fi
+
+    mkdir $case/system
+    find system -maxdepth 1 -type f -exec cp {} $case/system/ \;
+    ln -s ../$case/system system/$case
+    
+    echo "finished constructing $case."
+    echo "NOTE: please fill $case/constant/polyMesh with proper files or run blockMesh"
+}
+
+function checkIsFoam {
+# Check this is indeed an OpenFoam case.
+    if [ ! -d system ]; then
+        echo "ERROR: '$d' is not an OpenFOAM case" >&2
+        exit 1
+    fi
+}
+
+
+function  link2DResults {
+    for timeDir in `echo 0.[0-9]* [1-9]*`; do
+        if [[ ! -d "$timeDir" ]]; then continue;  fi
+        echo "linking: " $case/$timeDir " to "  $timeDir/$case 
+        if [ -h $case/$timeDir ]; then 
+            /bin/rm  $case/$timeDir;
+        fi
+        if [ -d $timeDir/$case ]; then
+            ln -s ../$timeDir/$case  $case/$timeDir
+        else
+            echo "$case/$timeDir is not a directory."
+        fi
+    done
+}
+
+if [ "x$1" = "x-h" ]; then
+  echo "Make a 2D case. Must run from current case." >&2
+  echo "Usage: $0 [-caseName caseName]  [-clean -create -link] [-case caseDir] " >&2
+  exit 0
+fi
+
+if [ "x$1" = "x" ]; then
+    checkIsFoam
+    create2D
+fi
+
+if [ "x$2" = "x-case" ]; then
+    cd $3
+fi
+
+checkIsFoam
+
+if [ "x$1" = "x-clean" ]; then
+    clean2D
+fi
+
+if [ "x$1" = "x-create" ]; then
+    create2D
+fi
+
+if [ "x$1" = "x-link" ]; then
+    link2DResults
+fi
+

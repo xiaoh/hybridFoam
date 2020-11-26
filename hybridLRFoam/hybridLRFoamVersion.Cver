@@ -1,0 +1,5 @@
+#include "hybridLRFoamVersion.H"
+
+const char* const hybridLRbuild = "BUILD_STRING"; 
+
+

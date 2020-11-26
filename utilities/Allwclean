@@ -1,0 +1,22 @@
+#!/bin/sh
+cd ${0%/*} || exit 1    # run from this directory
+set -x
+
+wclean averageSpanwise
+wclean blockMeshX
+wclean myLRPlus
+wclean myLRPlusLES
+wclean myPlusDNS
+wclean myPlusLES
+wclean patchIntegrateX
+wclean perturbU
+wclean postAverage
+wclean postChannelX
+wclean postLRAverage
+wclean postLRChannel
+wclean ransCellToProc
+wclean ransCellToProcX
+wclean wallPlusLES
+wclean wallShearLES
+
+# ----------------------------------------------------------------- end-of-file

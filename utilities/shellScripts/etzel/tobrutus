@@ -1,0 +1,21 @@
+#!/bin/bash
+
+file=$@
+if [ -z $file ]; then
+    file="*"
+else
+    file=$@
+fi
+
+echo "Copying these files to brutus:~/work/etzel/: " $file
+
+shortHost=`/bin/uname -n | awk -F. '{print $1}'`
+
+# use different config file (for SSH) on different machines
+if [ $shortHost = "isar" ]; then
+    for iFile in $file; do
+        rsync -e "ssh -F /home/xiaoh/.ssh/config.isar"  -Cavz $iFile xiaoh@brutus.ethz.ch:~/work/etzel/
+    done
+else
+    rsync -Cavz $file xiaoh@brutus.ethz.ch:~/work/etzel/
+fi

@@ -1,0 +1,28 @@
+#!/bin/bash
+
+file=$@
+if [ -z $1 ]; then
+    file="../`basename $PWD`"
+else
+    file=$@
+fi
+
+echo "Copying these cases to brutus:~/work/OF-runs/: " $file
+
+for case in $file; do
+  if [ ! -d $case/system ]; then
+    echo "ERROR: '$case' is not an OpenFOAM case. Exiting without copying" >&2
+    exit 1
+  fi
+done
+
+shortHost=`/bin/uname -n | awk -F. '{print $1}'`
+
+# use different config file (for SSH) on different machines
+if [ $shortHost = "isar" ]; then
+    for iFile in $file; do
+        rsync -e "ssh -F /home/xiaoh/.ssh/config.isar"  -Cavz $iFile xiaoh@brutus.ethz.ch:~/work/OF-runs/
+    done
+else
+    scp -r $file xiaoh@brutus.ethz.ch:~/work/OF-runs/
+fi

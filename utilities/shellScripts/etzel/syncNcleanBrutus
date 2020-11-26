@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# Sync the brutus and clean the directories
+# run as cron job
+
+logFile="$HOME/log.sync2brutus.etzel"
+Email='xiaoh@ifd.mavt.ethz.ch'
+
+echo "If empty, it is probably because connection to brutus failed." > $logFile
+~/bin/sync4brutus >& $logFile && ssh xiaoh@brutus.ethz.ch '~/bin/cronPurgeRuns.sh; ~/bin/cronPurgeScratch.sh' || mail -s "Exception from rsync and clean Brutus operation (etzel)" $Email < $logFile
+#/bin/rm $logFile

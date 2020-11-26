@@ -1,0 +1,11 @@
+#!/bin/bash
+
+file=$@
+if [ -z $file ]; then
+    file="*"
+else
+    file=$@
+fi
+
+echo "Copying these files to local:~/local-home/venant: " $file
+scp -r $file xiaoh@etzel.ifd.mavt.ethz.ch:~/local-home/brutus

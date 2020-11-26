@@ -1,0 +1,67 @@
+FoamFile
+{
+ version 2.0;
+ format ascii;
+
+ root "OpenFoamFilesrun/tutorials/icoFoam";
+ case "cylinderEulerFromGridPro_fine";
+ instance ""constant"";
+ local "PolyMesh";
+
+ class polyBoundaryMesh;
+ object boundary;
+}
+
+7
+(
+bottomWall
+{
+  type wall;
+  nFaces 190;
+  startFace 50325;
+}
+
+stepWall
+{
+  type wall;
+  nFaces 45;
+  startFace 50515;
+}
+
+inletWall
+{
+  type wall;
+  nFaces 80;
+  startFace 50560;
+}
+
+inlet
+{
+  type patch;
+  nFaces 90;
+  startFace 50640;
+}
+
+topBoundary
+{
+  type symmetryPlane;
+  nFaces 240;
+  startFace 50730;
+}
+
+outlet
+{
+  type patch;
+  nFaces 105;
+  startFace 50970;
+}
+
+sides
+{
+  type cyclic;
+  nFaces 50700;
+  startFace 51075;
+}
+
+)
+

@@ -1,0 +1,23 @@
+#!/bin/bash
+outputName=$(basename $(pwd))-LK-correlation.eps
+echo "Results output to $outputName"
+for log in *.sh.o*; do
+    echo " set term post eps color
+      set out '$outputName'
+      set yrange [0:1]
+      set grid
+      set xlabel 'Time (s)'
+      set ylabel 'Correlation'
+      set title 'Correlation of length and energy criteria'
+      plot '-' u 1:2  notitle w l lw 2
+      " > tcorr.gp.tmp
+
+    echo "The log file is: $log"
+    grep Correlation $log | cut -d ":" -f 2 > corr.tmp
+    grep "^Time =" $log | cut -d "=" -f 2 > time.tmp
+    paste time.tmp corr.tmp >> tcorr.gp.tmp
+    gnuplot tcorr.gp.tmp
+    rm *.tmp
+    evince $outputName &
+    exit 0
+done

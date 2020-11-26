@@ -1,0 +1,10 @@
+EXE_INC = \
+    -I$(LIB_SRC)/finiteVolume/lnInclude \
+    -I$(LIB_SRC)/sampling/lnInclude \
+    -I../library/libEmergencyExit/lnInclude \
+    -L$(FOAM_USER_LIBBIN)
+
+EXE_LIBS = \
+    -lfiniteVolume \
+    -lmeshTools \
+    -lEmergencyExit

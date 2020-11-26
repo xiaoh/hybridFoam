@@ -1,0 +1,114 @@
+#!/bin/bash
+
+dir=$(pwd)
+echo Current dir: $dir
+jobname=$(basename $dir) 
+figDir=logs
+
+set -x
+if [ -f lsf ]; then
+    /bin/rm lsf
+fi
+
+cat `ls -rt lsf.o*` > lsf    
+
+if [ "x$WM_PROJECT_VERSION" = "x1.6.y" ]; then
+    echo "Foam version check passed:" 1.6.y 
+elif [ -z "$WM_PROJECT_VERSION" ]; then
+    echo "Foam not initialized."
+    exit 0
+else
+    echo "Foam version check passed:" 1.6.x 
+fi
+
+
+startTime=$(awk '/couplingStartTime/{print $2}' constant/relaxParameters | sed 's/;//')
+rampTime=$(awk '/gradualCouplingDuration/{print $2}' constant/relaxParameters | sed 's/;//')
+let rampTime+=$startTime
+echo "start time: $startTime; rampTime: $rampTime"
+
+if [ -f ../$jobname/system/controlDict ] && [ -d ../$jobname/constant/polyMesh ]
+    then # Job check passed.
+    echo THIS CASE: $jobname WILL BE PROCESSED.
+
+    if [ x$1 = "x-n" ]; then
+        echo "Skip foamLog lsf"
+    else
+        if [ -d logs ]; then
+            rm -fr logs
+        fi
+        foamLog lsf
+    fi
+
+    grep "Create mesh for time" lsf | cut -d"=" -f 2 > restartTimes
+
+    if [ -d logs ]; then
+        cd logs
+        for file in $(ls *diff[EKU]_0); do
+            echo "Trimming file $file"
+            mv $file $file.tmp
+            sed '1,100d' $file.tmp > $file
+        done
+        cd ..
+    fi
+    # gnuplot ~/lib/foam/diffUKE.gp
+    gnuplot <<EOF
+load "/home/xiaoh/lib/gnuplot/defineLineStyles.gp" 
+set term post eps color enhan
+
+set xrange [0:*]
+
+set xlabel "Time (s)"
+# set ylabel "[U, k, {/Symbol e}] in Physical units"
+
+set out "logs/diffUL.eps"
+set yrange [0:5e-3]
+plot "logs/LESdiffU_0" title "diffU on LES domain" w l lw 5
+set out "logs/diffUR.eps"
+# set xrange [$startTime:*]
+plot "logs/RASdiffU_0" title "diffU on RAS domain" w l lw 5
+
+
+set out "logs/diffK.eps"
+set yrange [0:5e-5]
+plot "logs/diffK_0" title "diff k on LES domain" w l lw 5
+
+set yrange [0:*]
+set out "logs/diffE.eps"
+plot "logs/diffE_0" title "diff Epsilon on LES domain" w l lw 5
+
+set yrange [0:1.2E-4]
+set out "logs/kMasked.eps"
+plot "logs/kLESMask_0" title "kLES on LES domain" w l ls 2 lw 5, \
+     "logs/kRASMask_0" title "kRAS on LES domain" w l ls 3 lw 5
+set yrange [0:*]
+
+set out "logs/EpsMasked.eps"
+plot "logs/EpsLESMask_0" title "Epsilon LES on LES domain" w l ls 2 lw 5, \
+     "logs/EpsRASMask_0" title "Epsilon RAS on LES domain" w l ls 3 lw 5
+
+set ylabel "C_n, Dimensionless"
+set arrow from $startTime,1 to $startTime,0 as 6 ls 4 lw 5
+set arrow from $rampTime,1 to $rampTime,0 as 5 ls 3 lw 5
+set out "logs/cnRL.eps"
+set yrange [0:1]
+plot "logs/RCourantMax_0" title "RAS Max Courant Number" w l ls 3 lw 5, \
+     "logs/LCourantMax_0" title "LES Max Courant Number" w l ls 2 lw 5, \
+     "restartTimes" using 1:($$1*0+0.5) title "Times of continuation" w p pt 11 pointsize 3
+set yrange [0:1]     
+set ylabel "Correlation"
+set out "logs/correlationLK.eps"
+plot "logs/correlationLK_0" title "Energy/Length flag correlation" w l lw 5
+EOF
+    echo "*****************************************************************************"  | tee -a diary  
+else
+    echo Exception occurred. Case named: $jobname.
+    echo "Are you actually in a openfoam case directory?"
+    echo "-------------------------------------------------------------------------------"
+    exit
+fi
+
+/home/xiaoh/software/bin/epsmerge -x 2 -y 3 --header bF -o $figDir/$jobname-diff.ps  $figDir/diffUL.eps  $figDir/diffUR.eps $figDir/diffK.eps  $figDir/diffE.eps $figDir/cnRL.eps $figDir/correlationLK.eps
+/home/xiaoh/software/bin/epsmerge -x 2 -y 3 --header bF -o $figDir/$jobname-KEMasked.ps  $figDir/kMasked.eps  $figDir/EpsMasked.eps
+evince $figDir/$jobname-*.ps  &
+

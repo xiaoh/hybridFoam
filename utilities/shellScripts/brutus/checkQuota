@@ -1,0 +1,12 @@
+#!/bin/bash
+
+logFile="diskUsage.log"
+Email="xiaoh@ethz.ch"
+warningValue=60
+echo "Warning threshold = ${warningValue}%" > $logFile
+quota_work > $logFile
+percentUsed=`awk '/cluster/{print $4}' $logFile | awk -F. '{print $1}'`
+if [ $percentUsed -gt $warningValue ]; then
+    title="Warning: disk usage on Brutus =  ${percentUsed}%"
+    mail -s "$title" $Email < $logFile  
+fi

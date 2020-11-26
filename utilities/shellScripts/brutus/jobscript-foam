@@ -1,0 +1,32 @@
+#!/bin/bash
+# This script can be put in a openfoam case dir
+# Upon running, it will submit the current job with "at now".
+# It will not attahced to any terminal and thus can only be terminated with kill.
+
+#echo "This is a job submission script for OpenFoam cases on etzel."
+
+prog=$1
+dir=$(pwd)
+#echo Current dir: $dir
+jobname=$(basename $dir) 
+
+
+tmpfile="tmp_job_$jobname.sh"
+echo "#!/bin/tcsh" > $tmpfile
+echo "source ~/.openfoam16y" >> $tmpfile
+echo "touch LOCK" >>  $tmpfile
+echo "$prog  >& this-$(date +%F-%H:%M:%S).log && mv LOCK FINISHED || touch FAIL "  >> $tmpfile
+
+chmod +x $tmpfile
+at now -f $tmpfile
+
+if [ -f $tmpfile ]; then
+    /bin/rm $tmpfile 
+else
+    echo Exception occurred when trying to remove tmp file.
+fi
+
+echo "Log and exception files: this-(date).log"
+echo  JOB $jobname HAS BEEN SUBMITTED SUCCESSFULLY!
+echo "-------------------------------------------------------------------------------"
+echo " "

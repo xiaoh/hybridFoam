@@ -1,0 +1,15 @@
+#!/bin/tcsh
+
+set opt="$1"
+
+if ( x$1 == "x-r" ) then
+    echo "All running jobs: "
+else if ( x$1 == "x-p" ) then
+    echo "All pending jobs: "
+else
+    echo "All jobs: "
+endif
+
+
+bjobs $opt -w | awk '/^[0-9]/{print $7}' | sort -u | sed = | sed 'N;s/\n/\t/'
+

@@ -1,0 +1,5 @@
+#include "communicatorLRVersion.H"
+
+const char* const communicatorLRbuild = "BUILD_STRING"; 
+
+

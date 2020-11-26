@@ -1,0 +1,8 @@
+#!/bin/bash
+
+
+for case in `find /local/share -group 'fluid'` ; do
+    chgrp  isar $case
+    chmod  g+w  $case
+done
+

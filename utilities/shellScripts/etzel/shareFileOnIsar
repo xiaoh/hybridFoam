@@ -1,0 +1,4 @@
+#!/bin/bash
+
+chgrp -R isar /local/share/xiaoh
+chmod -R g+w  /local/share/xiaoh

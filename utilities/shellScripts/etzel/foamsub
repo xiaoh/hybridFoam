@@ -1,0 +1,81 @@
+#!/bin/bash
+# usage: foamsub exec (in the jobdir)
+# exec is the executable file
+#
+# This script can be put in a openfoam case dir
+# Upon running, it will submit the current job with "at now".
+# It will not attahced to any terminal and thus can only be terminated with kill.
+
+if [ "x$1" = "x-h" ]; then
+    echo "Usage: $0  log-text (default executable hybridLRFoam)" >&2
+    echo "  or : $0 -x exec log-text" >& 2
+fi
+
+if [ "x$WM_PROJECT_VERSION" = "x1.6.y" ]; then
+    echo "Foam version check passed." 
+    echo "Using OpenFOAM 1.6.y"
+elif [ -z "$WM_PROJECT_VERSION" ]; then
+    echo "OpenFOAM version not set. Run f16y first!"
+    exit 1
+else
+    echo "Wrong OpenFOAM version. Please use OpenFOAM 1.6.y and submit again."
+    exit 1
+fi
+
+echo " "
+echo "This is a job submission script for OpenFoam cases on Etzel."
+echo "Date: $(date)"
+echo "-------------------------------------------------------------------------------"
+
+prog=hybridLRFoam
+
+if [ "x$1" = "x-n" ]; then
+    echo "Submitting job WITHOUT logging ..." >&2
+fi
+
+if [ "x$1" = "x-x" ]; then
+    echo "Excutable is $2 " >&2 
+    prog=$2
+fi
+
+dir=$(pwd)
+echo Current dir: $dir
+jobname=$(basename $dir) 
+diaryfile=~/.FoamLog
+
+if [ -f $diaryfile ]
+    then
+    echo "Diary file:" $diaryfile
+else
+    touch $diaryfile
+fi
+
+if [ -f ../$jobname/system/controlDict ] && [ -d ../$jobname/constant/polyMesh ]
+    then # Job check passed.
+    echo THIS JOB: $jobname WILL BE SUBMITTED FOR RUN.
+    # Log current activity
+    echo " "  | tee -a diary  
+    echo "time: $(date +%Y-%m-%d%t%H:%M:%S)"  | tee -a diary  
+    echo "-----------------------------------------------------------------------------"  | tee -a diary  
+    echo "exec: $prog"  | tee -a diary  
+    echo "case: $dir"  | tee -a diary  
+    echo "Log: $0 $@"  | tee -a diary  
+    echo "*****************************************************************************"  | tee -a diary  
+    echo " "  | tee -a diary  
+else
+    echo Exception occurred. Job named: $jobname.
+    echo "Are you actually in a openfoam case directory?"
+    echo "No job will be submitted. EXIT with ERROR"
+    echo "-------------------------------------------------------------------------------"
+    exit
+fi
+
+cat diary >> $diaryfile
+
+dir=""
+jobname=""
+echo Running job scheduling script with utility AT NOW ......
+cp ~/bin/jobscript-foam .
+./jobscript-foam $prog
+
+/bin/rm ./jobscript-foam 

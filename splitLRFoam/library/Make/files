@@ -1,0 +1,10 @@
+chPressureGrad/chPressureGrad.C
+lesForcing/lesForcing.C
+ransForcing/ransForcing.C
+commChannel/processorMeshes.C
+commChannel/fvFieldReconstructor.C
+commChannel/commChannel.C
+commChannel/fvFieldDecomposer.H
+commChannel/commChannelVersion.Cver
+
+LIB = $(FOAM_USER_LIBBIN)/libsplitInfrastructure

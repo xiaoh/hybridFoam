@@ -1,0 +1,278 @@
+#!/bin/bash
+
+   ### The following lines explain how the script works and lists the available options: ###
+if [ "x$1" = "x-h" ]; then   ### if [ "$#" -ge 4 ] || [ "$#" -lt 1 ] || [ "x$1" = "x-h" ]; then ###
+    echo ""; echo "Usage: $0 [pattern or list of case-dirs to be post-processed] [list of option-flags (options need to be preceeded by a hyphon '-')]"  >&2
+    ### Options below:
+    echo ""; echo "Available options are: " >&2
+    echo ""; >&2
+    echo " -all                 to enable all post-processing operations "  >&2
+    echo " -2Dclean      to clean out the Case2D directories  "  >&2
+    echo " -2Dcreate     to create the Case2D directories, fill them with blockMesh file-data and create the 2D mesh  "  >&2
+    echo " -avSpanwise          to apply the averageSpanwise utility to the latest time directory  "  >&2
+    echo " -sam2D               to sample the quantities specified in your exampleDicts-sample-Dictionary of the 2D case  "  >&2
+    echo " -wallShear           to compute the wall Shear Stresses  "  >&2
+
+    echo "*** This script requires the user to have one directory where all necessary OpenFOAM dictionay files are kept in or access to my location!!! ***"  >&2    
+    echo "*** They need to be in a certain format, e.g: sampleDict.periodichill ***"  >&2
+    echo ""; echo "Please check that the correct nomeclature is maintained for the data-processing with awk at ~line 160-ff. Thanks!"
+    echo ""; echo "This script needs to be executed from the directory where the OpenFOAM cases are kept in if multiple cases are to be treated."  >&2
+    echo ""; echo "If no input arguments are supplied it will assume that you are already within a case directory and only want to post-process this single case."  >&2
+    echo ""; echo "It will take the input pattern or, if more than 2 input arguments are given it will treat the input arguments as a list."  >&2
+    echo "" >&2
+    exit 0
+fi
+
+
+   ### Please enter the directory wehre I can find all necessary OpenFOAM example-dictionaries below:
+exampleDicts=/home/xiaoh/lib/foam/henning-dicts
+
+echo ""; echo "If you keep the OpenFOAM example-dicts in any other place than or do not have access to:";
+echo "$exampleDicts"; 
+echo "then please SPECIFY this location (absolute path) now ! Hit ENTER to proceed anyway.."
+#read tempExampleDicts
+echo "Please make sure you have loaded your OpenFOAM environment"
+if [[ $tempExampleDicts = /* ]]; then
+    exampleDicts=$tempExampleDicts
+fi
+
+workingDir=$PWD
+
+
+### Split the input, to separate directories from option-arguments: ###
+input=""  # initialize variables input and options
+options=""
+TwoDName="no"
+echo ""; echo "recognised options and case directories:"
+for count in $@;do
+   if [[ $count = -* ]];then
+       if [[ ! "-all-2Dclean-2Dcreate-avSpanwise-sam2D-wallShear-caseType" =~ $count  ]]; then
+	       echo "***ERROR*** : Didn't recognise option: $count !!! Please check your option syntax.."
+	       exit
+       fi
+       if [[ $count = "-caseType" ]]; then
+           TwoDName="yes"
+           continue;
+       fi
+       echo "count = " $count
+       options=`echo "$options $count"`
+    else
+       if [[ $TwoDName = "yes" ]]; then
+           caseType=$count
+           if [[ $caseType = "hybridLES" ]]; then
+               Case2D="Case2DLES"
+               echo "This is a hybridLES case"
+           elif [[ $caseType = "hybridRANS" ]]; then
+               Case2D="Case2DRANS"
+               foamPreHybrid link
+               echo "This is a hybridRANS case"
+           else
+               Case2D="Case2D"
+           fi
+           TwoDName="no"
+           echo "2D case name is: $Case2D"
+           avOption="-caseType $caseType"
+           continue;
+       fi
+       echo $count 
+       input=`echo "$input $count"`
+    fi
+done
+
+
+   ### Function declarations of the available functions in the script: ###
+function foamTwoDclean
+{
+    if [ -d $Case2D ] ; then
+    foamTwoD -caseName $Case2D -clean
+    fi
+}
+function foamTwoDcreate
+{
+    foamTwoD -caseName $Case2D  -create
+    cd $Case2D/constant/polyMesh
+    sed 's/^Nz .*;/Nz 1;/' blockMeshDict | sed 's/^.*cyclic sides/    empty sides/' | sed 's/^Width 4.5;/Width 0.2;/' > blockMeshDict.tmp
+    cp blockMeshDict blockMeshDict.before-automatic-sed
+    mv blockMeshDict.tmp blockMeshDict
+    if [[ $caseType = "hybridRANS" ]]; then 
+        cp $workingDir/$case/RANS/constant/polyMesh/meshParameters .
+    else
+        cp $workingDir/$case/constant/polyMesh/meshParameters .
+    fi
+    cd ../..
+    mkdir 0
+    blockMesh > blockMeshX.log
+    checkMesh > /dev/null
+    if [ $? -gt 0 ]; then 
+        echo "checkMesh failed!"
+    else
+        echo "checkMesh passed!"
+    fi
+    cd ..
+}
+function avSpanwise
+{
+    echo "pwd: " $PWD
+    if [[ $caseType = "hybridRANS" ]]; then
+        cp -f $exampleDicts/postChannelDict.periodichill  $workingDir/$case/RANS/constant/postChannelDict
+    else
+        cp -f $exampleDicts/postChannelDict.periodichill  $workingDir/$case/constant/postChannelDict
+    fi
+
+    exit
+    averageSpanwise -latestTime $avOption
+    foamTwoD -caseName $Case2D -link
+}
+function sam2D
+{
+    cp $exampleDicts/sampleDict.periodichill $Case2D/system/sampleDict
+    cd $Case2D
+    if [[ -z "sets" ]];then
+    rm -fr sets
+    fi
+    sample -latestTime
+       ### Using awk, the following lines should already give the normalised results, which can then be further processed in Matlab for plotting: ###
+    sampleTimeDir=`ls | grep '^[0-9]*\.\?[0-9]*$' | awk 'BEGIN {max = 0}{if ($1>max) {max=$1}} END {print max}'` ### filters out the dir with highest decimal number, i.e.: the latest time directory
+    cd sets/$sampleTimeDir/
+        for inc in 0.0 0.5 1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0;do ### These are the locations at which the samples were taken and they are assumed to feature in the file-names of the sample-files \
+            pr -m -t -s\  x$inc\_U2.xy x$inc\_RResolved2*.xy > x$inc\_U2_RResolved2_B2.xy
+            echo "% y             U               V               uu              vv              uv            k(no Data) uu-b           vv-b            uv-b" > x$inc\_normalised_Results.xy
+            awk -v Ub=${Ubulk} '{print $1 "\t" $2/Ub "\t" $3/Ub "\t" $6/(Ub*Ub) "\t" $9/(Ub*Ub) "\t" $7/(Ub*Ub) "\t" "0.0" "\t" ($6+$12)/(Ub*Ub) "\t" ($9+$15)/(Ub*Ub) "\t" ($7+$13)/(Ub*Ub)}' x$inc\_U2_RResolved2*.xy  >> x$inc\_normalised_Results.xy
+        done
+    cd ../.. ### Takes you back to the Case2D dir
+    cd .. ### Takes you back to the case dir
+}
+function wallShear
+{
+    cd $Case2D
+    cp $exampleDicts/wallShearDict.periodichill constant/wallShearDict
+    wallShearLES -latestTime
+    ShearTimeDir=`ls | grep '^[0-9]*\.\?[0-9]*$' | awk 'BEGIN {max = 0}{if ($1>max) {max=$1}} END {print max}'`
+    sed -i 's/#/%/g' $ShearTimeDir/wallShear.xy 
+    cd ..
+}
+function countdown   ### probably an absolutely unnecessary gimmick ###
+{
+        local OLD_IFS="${IFS}"
+        IFS=":"
+        local ARR=( $1 )
+        local SECONDS=$((  (ARR[0] * 60 * 60) + (ARR[1] * 60) + ARR[2]  ))
+        local START=$(date +%s)
+        local END=$((START + SECONDS))
+        local CUR=$START
+        while [[ $CUR -lt $END ]]
+        do
+                CUR=$(date +%s)
+                LEFT=$((END-CUR))
+                printf "\r     ... %02d ...       (Ctrl-C to terminate)" \
+                        $((LEFT%60))
+                sleep 1
+        done
+        IFS="${OLD_IFS}"
+        echo "        "
+}
+
+
+
+#read
+
+if [[ -z $input ]] ; then 
+	echo "As no casename is specified, script assumes that current working directory is the case directory..."
+#	countdown 00:00:03
+	workingDir=`dirname $PWD`
+	input=`basename $PWD`
+fi
+
+echo ""
+echo "Ubulk = 0.028 (default)."
+
+if [[ -z $UbulkTest ]]; then
+    Ubulk=0.028
+else
+    Ubulk=$UbulkTest
+fi
+
+### Just a file where all treated casenames are put into, for later use in Matlab-plotting: ###
+CaseDirNames=$workingDir/"CaseDirNames.txt"
+touch $CaseDirNames
+# echo "---" >> $CaseDirNames
+function mainFun
+{
+       ### Start of the loop that takes you through all the cases specified in the input: ###
+    for case in $input; do
+
+        echo "************************************************************************"
+        echo -e "Starting operation on case $case\n"
+        
+        cd $workingDir/$case
+        
+        if [[ $caseType = "hybridRANS" ]]; then
+            cd RANS
+        fi
+
+           ### Checking that this is a workable case: ###
+        latestTimeDir=`ls | grep '^[0-9]*\.\?[0-9]*$' | awk 'BEGIN {max = 0}{if ($1>max) {max=$1}} END {print max}'`
+    	if ( [[ $latestTimeDir = 0 ]] || [[ -z $latestTimeDir ]] ) && [ ! -d processor0 ] ;then
+    	    echo "I'm not sure this is a proper case: "; 
+            echo "$case";
+            echo "Skip and resume with the next case in the list.."
+    	    continue
+    	fi
+        
+        ### Checking that the latest time is reconstructed
+        if [ -d processor0 ] ; then
+            latestdecomp=`ls processor0 | grep '^[0-9]*\.\?[0-9]*$' | awk 'BEGIN {max = 0}{if ($1>max) {max=$1}} END {print max}'`
+            latestrecons=`ls | grep '^[0-9]*\.\?[0-9]*$' | awk 'BEGIN {max = 0}{if ($1>max) {max=$1}} END {print max}'`
+            if [[ $latestdecomp != $latestrecons ]];then
+                echo ""; echo "I will reconstruct $latestdecomp as $latestrecons is less than $latestdecomp"; echo ""
+                reconstructPar -latestTime > reconstructPar.log
+            fi  
+        fi
+        
+        if [[ $caseType = "hybridRANS" ]]; then
+            echo $case/RANS/$Case2D/sets/$latestdecomp >> $CaseDirNames
+        else
+            echo $case/$Case2D/sets/$latestdecomp >> $CaseDirNames
+        fi
+        
+        if [[ $options =~ -2Dclean ]] || [[ $options =~ -all ]] ; then
+            foamTwoDclean
+            echo "Finished foamTwoDclean"
+        fi
+        
+        if [[ $options =~ -2Dcreate ]] || [[ $options =~ -all ]] ; then
+            foamTwoDcreate
+            echo "Finished foamTwoDcreate"
+        fi
+        
+        if [[ $options =~ -avSpanwise ]] || [[ $options =~ -all ]] ; then
+            if [ -d $Case2D ] ; then
+                avSpanwise
+            else
+                foamTwoDcreate
+                avSpanwise
+            fi
+        fi
+        
+        if [[ $options =~ -sam2D ]] || [[ $options =~ -all ]] ; then
+            sam2D
+        fi
+        
+        if [[ $options =~ -wallShear ]] || [[ $options =~ -all ]] ; then
+            if [ ! -d $Case2D ] ; then
+                echo "No Case2D has been created; I shall do it for you.."
+                foamTwoDcreate
+            fi
+            wallShear 
+        fi
+
+        cd $workingDir   ### To take you out of the case-directory so that another one can be entered at the next iteration.. ###
+        if [[ $caseType = "hybridRANS" ]]; then cd .. ; fi
+    done
+}
+
+mainFun # | tee $workingDir/postProcessPeriodicHill.stdout.log.$(date +%F-%H:%M:%S)
+
+echo "Done!"
+echo "*************************************************************************"
+#echo "Encountered Errors:";echo ""; more $workingDir/postProcessPeriodicHill.error.log

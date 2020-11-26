@@ -1,0 +1,11 @@
+#!/bin/tcsh
+
+# call this script using crontab -e
+
+set logFile='log.extractRunData'
+touch $logFile
+#set Email='cliddiar@student.ethz.ch xiaoh@ethz.ch'
+set Email='xiaoh@ethz.ch'
+
+$HOME/bin/extractRunsData >& $logFile && mail -s "Brutus-runs update" $Email < $logFile
+#/bin/rm $logFile

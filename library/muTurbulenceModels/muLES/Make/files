@@ -1,0 +1,12 @@
+muVanDriestDelta/muVanDriestDelta.C
+muLESModel/muLESModel.C
+
+muGenEddyVisc/muGenEddyVisc.C
+muOneEqEddy/muOneEqEddy.C
+
+muImpactSmagorinsky/muImpactSmagorinsky.C
+muImpactADMRT/muImpactADMRT.C
+
+muDynLagrangian/muDynLagrangian.C
+
+LIB = $(FOAM_USER_LIBBIN)/libincompressibleMuLESModels

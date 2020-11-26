@@ -1,0 +1,11 @@
+#!/bin/bash
+
+case=$PWD
+
+if [ ! -d $case/system ]; then
+ echo "ERROR: '$case' is not an OpenFOAM case" >&2  
+ exit 1
+else
+    echo "Killing case $case"
+    bkill -J `basename $case`
+fi

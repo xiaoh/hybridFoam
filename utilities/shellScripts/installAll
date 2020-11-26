@@ -1,0 +1,56 @@
+#!/bin/bash
+
+# source directory
+src=$PWD
+dest=$HOME/bin/
+
+
+share=`echo share/*`
+etzel="$share `echo etzel/*` "
+brutus="$share `echo brutus/*` "
+mac="$share `echo mac/*` "
+
+if [[ `hostname` =~ "etzel" ]]; then
+    fileList=$etzel
+elif [[ `hostname` =~ "isar" ]] ||
+    [[ `hostname` =~ "zurich" ]] ||
+    [[ `hostname` =~ "stockholm" ]] ||
+    [[ `hostname` =~ "shanghai" ]]; then
+    fileList=$etzel
+elif [[ `hostname` =~ "brutus" ]] ||
+    [[ `hostname` =~ "brlogin" ]]; then
+    fileList=$brutus
+elif [[ `hostname` =~ "ubuntu" ]]; then
+    fileList=$mac
+elif [[ `hostname` =~ "mac" ]]; then
+    fileList=$mac
+else
+    echo "Host `hostname` not recognized."
+    exit 1
+fi
+
+
+echo "Installing scripts in $src to $dest"
+for file in $fileList; do
+    if [ $file == $(basename $0) ]; then
+        echo "Skipped myself: $0"
+        continue;
+    fi
+    
+    baseFile=`basename $file`
+
+    if [ -f $dest/$baseFile ]; then
+        /bin/rm -f $dest/$baseFile
+    fi
+
+    if [ -f  $src/$file ]; then
+        echo "Installing  $file"
+        if [ -e $dest/$baseFile ]; then 
+	    /bin/rm $dest/$baseFile 
+	    fi
+        ln -s $src/$file $dest/$baseFile
+    else
+        echo "Ignoring $file (non-existing or not executable)."
+    fi
+done
+echo "Installation finished."
